@@ -29,7 +29,7 @@ Item {
         id: image
         anchors.fill: parent
         source: art.source
-        sourceSize: Qt.size(600, 600)
+        sourceSize: Qt.size(Math.ceil(art.width * Screen.devicePixelRatio), Math.ceil(art.height * Screen.devicePixelRatio))
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         visible: false

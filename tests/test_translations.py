@@ -59,7 +59,7 @@ Item {{
         messages = set()
         for path in (ROOT / "package/contents").rglob("*.qml"):
             messages.update(re.findall(r'L10n.tr\(Qt.locale\(\), "([^"]+)"', path.read_text()))
-        service = (ROOT / "backend/kcromecast/service.py").read_text()
+        service = "\n".join((ROOT / "backend/kcromecast" / name).read_text() for name in ("service.py", "sleep.py", "spotify.py"))
         messages.update(re.findall(r'raise ValueError\("([^"]+)"\)', service))
         messages.update(re.findall(r'self.error = "([^"]+)"', service))
         messages.update(re.findall(r'\{"error": "([^"]+)"\}', service))

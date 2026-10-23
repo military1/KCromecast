@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-import copy
 from dataclasses import dataclass, field
-import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit, parse_qs
 import json
 import logging
 import math
@@ -18,20 +17,29 @@ import secrets
 import signal
 import threading
 import time
-import tempfile
-from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
 
 import pychromecast
 from pychromecast.discovery import AbstractCastListener, CastBrowser
 from zeroconf import Zeroconf
 
 from . import __version__
+from .artwork import ArtworkCache
+from .sleep import SleepTimer
+from .storage import read_json, write_json
 
 LOG = logging.getLogger("kcromecast")
 CONFIG = Path.home() / ".config/kcromecast/service.json"
 CACHE = Path.home() / ".cache/kcromecast/artwork"
 ACTIVE = {"PLAYING", "PAUSED", "BUFFERING"}
+
+
+def disconnect_cast(cast):
+    # PyChromecast's zero-timeout disconnect signals the thread correctly, then
+    # join(0) raises while it is still exiting. This is normal asynchronous close.
+    try:
+        cast.disconnect(timeout=0)
+    except (TimeoutError, RuntimeError):
+        pass
 
 
 def service_name(app):
@@ -61,9 +69,12 @@ def finite(value, default=0.0):
 
 def media_snapshot(status):
     """Normalize receiver data; never expose media URLs, tokens or session IDs."""
-    metadata = status.media_metadata or {}
-    images = sorted(metadata.get("images", []), key=lambda i: finite(i.get("width")), reverse=True)
-    artwork = next((i["url"] for i in images if urlsplit(i.get("url", "")).scheme == "https"), "")
+    metadata = status.media_metadata if isinstance(status.media_metadata, dict) else {}
+    raw_images = metadata.get("images")
+    images = sorted((image for image in raw_images if isinstance(image, dict)),
+                    key=lambda image: finite(image.get("width")), reverse=True) if isinstance(raw_images, list) else []
+    artwork = next((image["url"] for image in images if isinstance(image.get("url"), str)
+                    and image["url"].startswith("https://") and urlsplit(image["url"]).hostname), "")
     state = status.player_state
     duration = max(0, finite(status.duration))
     position = max(0, finite(status.adjusted_current_time))
@@ -95,22 +106,28 @@ class Device:
     updated: float = field(default_factory=time.monotonic)
     artwork: str = ""
     artwork_remote: str = ""
+    connection: str = "CONNECTING"
     command_lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class StatusListener:
-    def __init__(self, manager, device_id):
-        self.manager, self.device_id = manager, device_id
+    def __init__(self, manager, device_id, cast=None):
+        self.manager, self.device_id, self.cast = manager, device_id, cast
+
+    def device(self):
+        device = self.manager.devices.get(self.device_id)
+        return device if device and (self.cast is None or device.cast is self.cast) else None
 
     def new_media_status(self, status):
-        self.manager.update_media(self.device_id, status)
+        if self.device():
+            self.manager.update_media(self.device_id, status)
 
     def load_media_failed(self, queue_item_id, error_code):
         LOG.info("Receiver reported a media error: %s", error_code)
 
     def new_cast_status(self, status):
         with self.manager.lock:
-            device = self.manager.devices.get(self.device_id)
+            device = self.device()
             if device:
                 device.receiver = {
                     "volume": round(max(0, min(1, finite(status.volume_level))) * 100),
@@ -118,12 +135,16 @@ class StatusListener:
                     "app": str(status.display_name or ""),
                     "service": service_name(status.display_name),
                 }
+        self.manager.changed()
 
     def new_connection_status(self, status):
         with self.manager.lock:
-            device = self.manager.devices.get(self.device_id)
+            device = self.device()
             if device:
                 device.connected = status.status == "CONNECTED"
+                device.connection = str(status.status)
+        self.manager.changed()
+        self.manager.sleep.wake()
 
 
 class DiscoveryListener(AbstractCastListener):
@@ -137,69 +158,146 @@ class DiscoveryListener(AbstractCastListener):
         self.manager.discover(uuid)
 
     def remove_cast(self, uuid, service, cast_info):
-        # A group can move to another leader/port. Keep its identity and let
-        # PyChromecast reconnect using the live mDNS services, rather than
-        # deleting it when just one announcement disappears.
+        # Group leader changes must not delete a group's identity/session.
         pass
 
 
 class Manager:
-    def __init__(self):
+    def __init__(self, state_dir=None, network=True, cache_dir=None):
         self.lock = threading.RLock()
-        self.devices: dict[str, Device] = {}
-        self.connecting = set()
-        self.pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="cast")
-        self.zc = Zeroconf()
-        self.browser = CastBrowser(DiscoveryListener(self), self.zc)
+        self.discovery_lock = threading.Lock()
+        self.devices = {}
+        self.connecting = {}
+        self.network_generation = 0
+        self.pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="cast")
         self.stopping = threading.Event()
-        self.sleep_device = ""
-        self.sleep_deadline = 0.0
-        self.sleep_minutes = 0
+        self.listeners = set()
+        self.revision = 0
+        self.instance = secrets.token_hex(8)
         self.error = ""
-        CACHE.mkdir(parents=True, exist_ok=True)
-        self.pending_artwork = set()
+        self.state_dir = Path(state_dir or CONFIG.parent)
+        self.selected = str(read_json(self.state_dir / "selection.json").get("device", ""))
+        self.sleep = SleepTimer(self.state_dir / "sleep.json", self.device_snapshot,
+                               lambda key, action, value: self.command(key, action, value, origin="timer"), self.changed)
+        self.artwork = ArtworkCache(cache_dir or CACHE, self.artwork_ready, self.protected_artwork)
+        self.spotify = None
+        self.zc = Zeroconf() if network else None
+        self.browser = CastBrowser(DiscoveryListener(self), self.zc) if network else None
+        self.recovering = False
+
+    def subscribe(self, callback):
+        with self.lock:
+            self.listeners.add(callback)
+
+    def unsubscribe(self, callback):
+        with self.lock:
+            self.listeners.discard(callback)
+
+    def changed(self, error=None):
+        with self.lock:
+            if error:
+                self.error = error
+            self.revision += 1
+            callbacks = tuple(self.listeners)
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception:
+                LOG.debug("State subscriber failed", exc_info=True)
 
     def start(self):
-        self.browser.start_discovery()
-        threading.Thread(target=self.timer_loop, daemon=True, name="sleep-timer").start()
+        if self.browser:
+            self.browser.start_discovery()
+        self.sleep.start()
+        if self.spotify:
+            self.spotify.start()
 
     def discover(self, uuid):
         key = str(uuid)
-        info = self.browser.devices.get(uuid)
+        info = self.browser.devices.get(uuid) if self.browser else None
         if not info:
             return
         with self.lock:
-            if key in self.devices:
-                self.devices[key].name = info.friendly_name or "Chromecast"
-                return
+            existing = self.devices.get(key)
+            if existing:
+                renamed = existing.name != (info.friendly_name or "Chromecast")
+                existing.name = info.friendly_name or "Chromecast"
+                if existing.cast.socket_client.is_alive() and not existing.cast.socket_client.stop.is_set():
+                    if renamed:
+                        self.changed()
+                    return
             if key in self.connecting or self.stopping.is_set():
                 return
-            self.connecting.add(key)
-        self.pool.submit(self.connect, info)
+            generation, zc = self.network_generation, self.zc
+            self.connecting[key] = generation
+        self.pool.submit(self.connect, info, generation, zc)
 
-    def connect(self, info):
-        key = str(info.uuid)
-        cast = None
+    def connect(self, info, generation, zc):
+        key, cast = str(info.uuid), None
         try:
-            cast = pychromecast.get_chromecast_from_cast_info(info, self.zc, timeout=8, retry_wait=3)
+            cast = pychromecast.get_chromecast_from_cast_info(info, zc, timeout=6, retry_wait=3)
             device = Device(key, info.friendly_name or "Chromecast", info.model_name or "",
                             cast.cast_type == "group", cast)
             with self.lock:
+                if generation != self.network_generation or self.stopping.is_set():
+                    disconnect_cast(cast)
+                    return
+                old = self.devices.get(key)
                 self.devices[key] = device
-            listener = StatusListener(self, key)
+            if old:
+                disconnect_cast(old.cast)
+            listener = StatusListener(self, key, cast)
             cast.register_status_listener(listener)
             cast.register_connection_listener(listener)
             cast.media_controller.register_status_listener(listener)
             cast.start()
+            self.changed()
         except Exception:
-            LOG.exception("Could not connect to a Cast receiver")
-            with self.lock:
-                self.devices.pop(key, None)
+            LOG.debug("Could not connect to a Cast receiver", exc_info=True)
             if cast:
-                cast.disconnect()
+                disconnect_cast(cast)
         finally:
             with self.lock:
-                self.connecting.discard(key)
+                if self.connecting.get(key) == generation:
+                    self.connecting.pop(key, None)
+
+    def reconnect(self):
+        self.sleep.wake()
+        if self.spotify:
+            self.spotify.wake()
+        with self.lock:
+            if self.recovering or self.stopping.is_set() or not self.browser:
+                return
+            self.recovering = True
+        self.pool.submit(self._recover)
+
+    def _recover(self):
+        try:
+            with self.discovery_lock:
+                if self.stopping.is_set():
+                    return
+                self.browser.stop_discovery()
+                with self.lock:
+                    self.network_generation += 1
+                    self.connecting.clear()
+                    devices = list(self.devices.values())
+                for device in devices:
+                    disconnect_cast(device.cast)
+                    with self.lock:
+                        device.connected, device.connection = False, "CONNECTING"
+                old_zc = self.zc
+                # Zeroconf sockets belong to the old interface addresses. Both
+                # discovery and Cast connections must use a fresh instance.
+                self.zc = Zeroconf()
+                self.browser = CastBrowser(DiscoveryListener(self), self.zc)
+                self.browser.start_discovery()
+                old_zc.close()
+        except Exception:
+            LOG.debug("Discovery recovery failed", exc_info=True)
+        finally:
+            with self.lock:
+                self.recovering = False
+            self.changed()
 
     def update_media(self, key, status):
         snapshot = media_snapshot(status)
@@ -211,71 +309,86 @@ class Manager:
             device.media, device.updated = snapshot, time.monotonic()
             if device.artwork_remote != url:
                 device.artwork_remote, device.artwork = url, ""
-            if url and not device.artwork and (key, url) not in self.pending_artwork:
-                self.pending_artwork.add((key, url))
-                self.pool.submit(self.cache_artwork, key, url)
+            needs_artwork = url and not device.artwork
+        if needs_artwork:
+            self.artwork.request(url)
+        self.changed()
 
-    def cache_artwork(self, key, url):
-        path = CACHE / (hashlib.sha256(url.encode()).hexdigest() + ".jpg")
-        try:
-            if not path.exists():
-                with urlopen(Request(url, headers={"User-Agent": "KCromecast/1.0"}), timeout=12) as response:
-                    if not response.headers.get("Content-Type", "").startswith("image/"):
-                        return
-                    data = response.read(4 * 1024 * 1024 + 1)
-                    if len(data) > 4 * 1024 * 1024:
-                        return
-                    with tempfile.NamedTemporaryFile(dir=CACHE, suffix=".tmp", delete=False) as handle:
-                        handle.write(data)
-                        temporary = Path(handle.name)
-                    temporary.replace(path)
-            with self.lock:
-                device = self.devices.get(key)
-                if device and device.artwork_remote == url:
-                    device.artwork = path.as_uri()
-            # Bound disk use while keeping the current session's artwork.
-            files = sorted(CACHE.glob("*.jpg"), key=lambda f: f.stat().st_mtime, reverse=True)
-            for old in files[128:]:
-                old.unlink(missing_ok=True)
-        except Exception:
-            LOG.debug("Artwork unavailable", exc_info=True)
-        finally:
-            with self.lock:
-                self.pending_artwork.discard((key, url))
-
-    def snapshot(self):
-        now = time.monotonic()
+    def protected_artwork(self):
         with self.lock:
-            devices = []
+            return {device.artwork for device in self.devices.values() if device.artwork}
+
+    def artwork_ready(self, url, path):
+        with self.lock:
             for device in self.devices.values():
-                media = copy.deepcopy(device.media)
-                if media.get("state") == "PLAYING":
+                if device.artwork_remote == url:
+                    device.artwork = path
+        if self.spotify:
+            self.spotify.artwork_ready(url, path)
+        self.changed()
+
+    def _cast_snapshots(self):
+        now = time.monotonic()
+        devices = []
+        with self.lock:
+            for device in self.devices.values():
+                media = dict(device.media)
+                if media.get("state") == "PLAYING" and device.connected:
                     media["position"] = media.get("position", 0) + now - device.updated
                     if media.get("duration"):
                         media["position"] = min(media["position"], media["duration"])
                 devices.append({"id": device.id, "name": device.name, "model": device.model,
-                                "group": device.group, "connected": device.connected,
-                                **media, **device.receiver, "artwork": device.artwork})
-            devices.sort(key=lambda d: (not d["group"], d["name"].casefold()))
-            return {"version": __version__, "sampled_at": now, "devices": devices,
-                    "sleep": {"device": self.sleep_device, "remaining": max(0, math.ceil(self.sleep_deadline - now)),
-                              "minutes": self.sleep_minutes}, "error": self.error}
+                                "group": device.group, "connected": device.connected, "connection": device.connection,
+                                "transport": "cast", **media, **device.receiver, "artwork": device.artwork})
+        return devices
 
-    def command(self, key, action, value=None):
+    def device_snapshot(self, key):
+        return next((device for device in self.all_devices() if device["id"] == key), None)
+
+    def all_devices(self):
+        devices = self._cast_snapshots()
+        if self.spotify:
+            devices.extend(self.spotify.devices_snapshot())
+        devices.sort(key=lambda device: (not device.get("group", False), device["name"].casefold(), device["id"]))
+        return devices
+
+    def snapshot(self):
+        devices = self.all_devices()
+        with self.lock:
+            if not self.selected and devices:
+                selected = next((device for device in devices if device.get("group") and device.get("state") in ACTIVE),
+                                next((device for device in devices if device.get("state") in ACTIVE), devices[0]))
+                self.selected = selected["id"]
+            selected, revision, error = self.selected, self.revision, self.error
+        return {"version": __version__, "instance": self.instance, "revision": revision,
+                "sampled_at": time.monotonic(), "selected": selected,
+                "devices": devices, "sleep": self.sleep.snapshot(), "error": error,
+                "spotify": self.spotify.public_state() if self.spotify else {"connected": False}}
+
+    def select(self, key):
+        if not isinstance(key, str) or not self.device_snapshot(key):
+            raise ValueError("The speakers are unavailable. Check your network connection.")
+        with self.lock:
+            self.selected, self.error = key, ""
+            write_json(self.state_dir / "selection.json", {"device": key})
+        self.changed()
+
+    def command(self, key, action, value=None, origin="user"):
+        if action == "sleep":
+            if not self.device_snapshot(key):
+                raise ValueError("The speakers are unavailable. Check your network connection.")
+            settings = value if isinstance(value, dict) else {"minutes": value}
+            self.sleep.set(key, settings.get("minutes"), settings.get("fade_seconds", 0))
+            return
+        if origin != "timer" and action in ("volume", "volume_delta", "mute"):
+            self.sleep.user_volume(key)
+        if isinstance(key, str) and key.startswith("spotify:") and self.spotify:
+            self.spotify.command(key, action, value)
+            return
         with self.lock:
             device = self.devices.get(key)
             if not device or not device.connected:
                 raise ValueError("The speakers are unavailable. Check your network connection.")
-        if action == "sleep":
-            minutes = finite(value, -1)
-            if minutes not in (0, 15, 30, 45, 60, 90):
-                raise ValueError("Invalid sleep timer")
-            with self.lock:
-                self.sleep_device = key if minutes else ""
-                self.sleep_deadline = time.monotonic() + minutes * 60 if minutes else 0
-                self.sleep_minutes = int(minutes)
-                self.error = ""
-            return
         with device.command_lock:
             media = device.cast.media_controller
             state = media_snapshot(media.status)
@@ -320,37 +433,57 @@ class Manager:
                 raise ValueError("Unknown command")
             with self.lock:
                 self.error = ""
-
-    def timer_loop(self):
-        while not self.stopping.wait(.5):
-            with self.lock:
-                if not self.sleep_deadline or time.monotonic() < self.sleep_deadline:
-                    continue
-                key = self.sleep_device
-                self.sleep_device, self.sleep_deadline, self.sleep_minutes = "", 0, 0
-            try:
-                with self.lock:
-                    device = self.devices.get(key)
-                    playing = device and device.media.get("state") in ("PLAYING", "BUFFERING")
-                if playing:
-                    self.command(key, "pause")
-            except Exception:
-                with self.lock:
-                    self.error = "The sleep timer ended, but the speakers did not respond."
-                LOG.exception("Sleep timer could not pause the receiver")
+        self.changed()
 
     def stop(self):
         self.stopping.set()
-        self.browser.stop_discovery()
+        self.sleep.stop()
+        if self.spotify:
+            self.spotify.stop()
+        with self.discovery_lock:
+            if self.browser:
+                self.browser.stop_discovery()
         with self.lock:
-            casts = [d.cast for d in self.devices.values()]
+            casts = [device.cast for device in self.devices.values()]
         for cast in casts:
             try:
-                cast.disconnect(timeout=2)
+                disconnect_cast(cast)
             except Exception:
-                pass
-        self.zc.close()
+                LOG.debug("Receiver disconnect failed", exc_info=True)
+        if self.zc:
+            self.zc.close()
         self.pool.shutdown(wait=False, cancel_futures=True)
+        self.artwork.stop()
+
+
+class LocalServer(ThreadingHTTPServer):
+    """Bound request concurrency and prevent a stalled client from holding a worker."""
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(12)
+        super().__init__(*args, **kwargs)
+
+    def get_request(self):
+        connection, address = super().get_request()
+        connection.settimeout(12)
+        return connection, address
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -381,6 +514,31 @@ class Handler(BaseHTTPRequestHandler):
         return valid
 
     def do_GET(self):
+        parsed = urlsplit(self.path)
+        if parsed.path == "/spotify/callback" and self.server.manager.spotify:
+            if self.headers.get("Host") != f"127.0.0.1:{self.server.server_port}":
+                self.reply(403, {"error": "Unauthorized"})
+                return
+            language = "ru" if self.headers.get("Accept-Language", "").split(",")[0].lower().startswith("ru") else "en"
+            try:
+                language = self.server.manager.spotify.callback(parse_qs(parsed.query))
+                text = "Spotify подключён. Можно закрыть эту вкладку и вернуться к KCromecast." if language == "ru" else "Spotify connected. Close this tab and return to KCromecast."
+                status = 200
+            except (ValueError, OSError):
+                text = "Не удалось подключить Spotify. Вернитесь в KCromecast и повторите вход." if language == "ru" else "Spotify sign-in failed. Return to KCromecast and try again."
+                status = 400
+            body = ("<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width'>"
+                    "<title>KCromecast</title><style>body{font:18px system-ui;max-width:36em;margin:15vh auto;padding:2em;background:#202528;color:#e8eef0}</style>"
+                    "<h1>KCromecast</h1><p>" + text + "</p>").encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if not self.authorized():
             return
         if self.path != "/v1/state":
@@ -391,17 +549,34 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.authorized():
             return
-        if self.path != "/v1/command":
+        if self.path not in ("/v1/command", "/v1/select", "/v1/reconnect", "/v1/spotify/authorize", "/v1/spotify/disconnect"):
             self.reply(404, {"error": "Not found"})
             return
         try:
-            length = int(self.headers.get("Content-Length", "0"))
+            raw_length = self.headers.get("Content-Length", "0")
+            if not raw_length.isdecimal() or len(raw_length) > 4:
+                raise ValueError("Invalid request")
+            length = int(raw_length)
             if not 0 < length <= 4096:
                 raise ValueError("Invalid request")
             data = json.loads(self.rfile.read(length))
             if not isinstance(data, dict):
                 raise ValueError("Invalid request")
-            self.server.manager.command(data.get("device"), data.get("action"), data.get("value"))
+            manager = self.server.manager
+            if self.path == "/v1/select":
+                manager.select(data.get("device"))
+            elif self.path == "/v1/reconnect":
+                manager.reconnect()
+            elif self.path == "/v1/spotify/authorize" and manager.spotify:
+                url = manager.spotify.authorize(data.get("client_id"), data.get("language", "en"))
+                self.reply(200, {"authorization_url": url})
+                return
+            elif self.path == "/v1/spotify/disconnect" and manager.spotify:
+                manager.spotify.disconnect()
+            else:
+                if not isinstance(data.get("device"), str) or not isinstance(data.get("action"), str):
+                    raise ValueError("Invalid request")
+                manager.command(data["device"], data["action"], data.get("value"))
             self.reply(200, self.server.manager.snapshot())
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             message = str(exc) if isinstance(exc, ValueError) and not isinstance(exc, json.JSONDecodeError) else "Invalid request"
@@ -415,22 +590,28 @@ def main():
     parser = argparse.ArgumentParser(description="KCromecast background service")
     parser.add_argument("--port", type=int, default=17844)
     parser.add_argument("--config", type=Path, default=CONFIG)
+    parser.add_argument("--events-port", type=int, default=17845)
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     config = json.loads(args.config.read_text())
-    manager = Manager()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    server.daemon_threads = True
+    from .desktop import DesktopRuntime
+    from .spotify import SpotifyConnect
+    manager = Manager(state_dir=args.config.parent)
+    manager.spotify = SpotifyConnect(args.config.parent, manager.changed, manager.artwork, args.port)
+    server = LocalServer(("127.0.0.1", args.port), Handler)
     server.manager, server.token = manager, config["token"]
+    desktop = DesktopRuntime(manager, config["token"], args.events_port)
     def shutdown(*_):
         threading.Thread(target=server.shutdown, daemon=True).start()
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    manager.start()
     LOG.info("KCromecast %s ready on loopback", __version__)
     try:
+        manager.start()
+        desktop.start()
         server.serve_forever(poll_interval=.3)
     finally:
+        desktop.stop()
         manager.stop()
         server.server_close()
 

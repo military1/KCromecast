@@ -60,7 +60,7 @@ RestartSec=3
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
-TimeoutStopSec=10
+TimeoutStopSec=20
 
 [Install]
 WantedBy=default.target
@@ -68,6 +68,20 @@ WantedBy=default.target
     run("systemctl", "--user", "daemon-reload")
     run("systemctl", "--user", "enable", "--now", "kcromecast.service")
     run("systemctl", "--user", "restart", "kcromecast.service")
+    # Give Plasma an application identity and icon for the MPRIS player.
+    desktop_entry = HOME / ".local/share/applications/org.kcromecast.widget.desktop"
+    desktop_entry.parent.mkdir(parents=True, exist_ok=True)
+    icon = installed / "contents/icons/kcromecast.svg"
+    desktop_entry.write_text(f'''[Desktop Entry]
+Type=Application
+Name=KCromecast
+Comment=Control your Chromecast speakers
+Comment[ru]=Управление колонками Chromecast
+Icon={icon}
+Exec=qdbus6 org.mpris.MediaPlayer2.kcromecast /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Raise
+NoDisplay=true
+Categories=AudioVideo;Audio;
+''')
     snapshot = None
     opener = build_opener(ProxyHandler({}))
     for _ in range(30):

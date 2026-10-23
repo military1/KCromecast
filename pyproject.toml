@@ -4,11 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kcromecast"
-version = "1.0.1"
+version = "1.1.0"
 description = "A native Plasma 6 remote for existing Google Cast sessions"
 requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
-dependencies = ["PyChromecast>=14.0.10,<15", "zeroconf>=0.148,<1"]
+dependencies = [
+    "PyChromecast>=14.0.10,<15", "zeroconf>=0.148,<1",
+    "websockets>=17.3,<18", "dbus-fast>=5.2,<6",
+    "Pillow>=12,<14", "requests>=2.32,<3",
+]
 
 [project.scripts]
 kcromecast-service = "kcromecast.service:main"

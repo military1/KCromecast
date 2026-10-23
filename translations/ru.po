@@ -212,3 +212,102 @@ msgstr "Копировать"
 
 msgid "Select all"
 msgstr "Выделить всё"
+
+msgid "Copy artist and title"
+msgstr "Копировать исполнителя и название"
+
+msgid "Search the web"
+msgstr "Искать в интернете"
+
+msgid "Find in YouTube Music"
+msgstr "Найти в YouTube Music"
+
+msgid "Find in Spotify"
+msgstr "Найти в Spotify"
+
+msgid "Reconnecting…"
+msgstr "Переподключение…"
+
+msgid "Speakers unavailable"
+msgstr "Колонки недоступны"
+
+msgid "Reconnect speakers"
+msgstr "Переподключить колонки"
+
+msgid "Custom timer…"
+msgstr "Другой таймер…"
+
+msgid "Minutes"
+msgstr "Минуты"
+
+msgid "Fade out before pausing"
+msgstr "Плавно уменьшить громкость перед паузой"
+
+msgid "Fade duration, seconds"
+msgstr "Длительность затухания, секунды"
+
+msgid "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
+msgstr "Таймер сохраняется при перезапуске службы. Во время сна компьютера сработает после пробуждения."
+
+msgid "Spotify account connected"
+msgstr "Аккаунт Spotify подключён"
+
+msgid "Connect Spotify to control your Spotify Connect devices. Spotify Premium is required."
+msgstr "Подключите Spotify для управления устройствами Spotify Connect. Нужен Spotify Premium."
+
+msgid "Register this redirect URI in your Spotify app:"
+msgstr "Добавьте этот адрес возврата в настройках приложения Spotify:"
+
+msgid "Open Spotify Developer Dashboard"
+msgstr "Открыть Spotify Developer Dashboard"
+
+msgid "Disconnect account"
+msgstr "Отключить аккаунт"
+
+msgid "Sign in with Spotify"
+msgstr "Войти через Spotify"
+
+msgid "Complete sign-in in your browser, then return here."
+msgstr "Завершите вход в браузере и вернитесь сюда."
+
+msgid "Enter a valid Spotify Client ID."
+msgstr "Введите правильный Client ID Spotify."
+
+msgid "Spotify sign-in expired. Try again."
+msgstr "Время входа в Spotify истекло. Попробуйте снова."
+
+msgid "Spotify sign-in was cancelled."
+msgstr "Вход в Spotify отменён."
+
+msgid "Could not sign in to Spotify. Check the Client ID and redirect URI."
+msgstr "Не удалось войти в Spotify. Проверьте Client ID и адрес возврата."
+
+msgid "Connect your Spotify account first."
+msgstr "Сначала подключите аккаунт Spotify."
+
+msgid "Spotify is busy. Try again later."
+msgstr "Spotify занят. Попробуйте позже."
+
+msgid "Spotify requires Premium and permission to control this device."
+msgstr "Нужен Spotify Premium и разрешение на управление этим устройством."
+
+msgid "Open Spotify on the target device first."
+msgstr "Сначала откройте Spotify на нужном устройстве."
+
+msgid "Spotify did not respond. Try again."
+msgstr "Spotify не ответил. Попробуйте снова."
+
+msgid "Missing access token"
+msgstr "Отсутствует токен доступа"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Start timer"
+msgstr "Включить таймер"
+
+msgid "Spotify API quota is exhausted. Try again later."
+msgstr "Лимит API Spotify исчерпан. Попробуйте позже."

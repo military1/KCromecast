@@ -174,3 +174,102 @@ msgstr "Copy"
 
 msgid "Select all"
 msgstr "Select all"
+
+msgid "Copy artist and title"
+msgstr "Copy artist and title"
+
+msgid "Search the web"
+msgstr "Search the web"
+
+msgid "Find in YouTube Music"
+msgstr "Find in YouTube Music"
+
+msgid "Find in Spotify"
+msgstr "Find in Spotify"
+
+msgid "Reconnecting…"
+msgstr "Reconnecting…"
+
+msgid "Speakers unavailable"
+msgstr "Speakers unavailable"
+
+msgid "Reconnect speakers"
+msgstr "Reconnect speakers"
+
+msgid "Custom timer…"
+msgstr "Custom timer…"
+
+msgid "Minutes"
+msgstr "Minutes"
+
+msgid "Fade out before pausing"
+msgstr "Fade out before pausing"
+
+msgid "Fade duration, seconds"
+msgstr "Fade duration, seconds"
+
+msgid "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
+msgstr "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
+
+msgid "Spotify account connected"
+msgstr "Spotify account connected"
+
+msgid "Connect Spotify to control your Spotify Connect devices. Spotify Premium is required."
+msgstr "Connect Spotify to control your Spotify Connect devices. Spotify Premium is required."
+
+msgid "Register this redirect URI in your Spotify app:"
+msgstr "Register this redirect URI in your Spotify app:"
+
+msgid "Open Spotify Developer Dashboard"
+msgstr "Open Spotify Developer Dashboard"
+
+msgid "Disconnect account"
+msgstr "Disconnect account"
+
+msgid "Sign in with Spotify"
+msgstr "Sign in with Spotify"
+
+msgid "Complete sign-in in your browser, then return here."
+msgstr "Complete sign-in in your browser, then return here."
+
+msgid "Enter a valid Spotify Client ID."
+msgstr "Enter a valid Spotify Client ID."
+
+msgid "Spotify sign-in expired. Try again."
+msgstr "Spotify sign-in expired. Try again."
+
+msgid "Spotify sign-in was cancelled."
+msgstr "Spotify sign-in was cancelled."
+
+msgid "Could not sign in to Spotify. Check the Client ID and redirect URI."
+msgstr "Could not sign in to Spotify. Check the Client ID and redirect URI."
+
+msgid "Connect your Spotify account first."
+msgstr "Connect your Spotify account first."
+
+msgid "Spotify is busy. Try again later."
+msgstr "Spotify is busy. Try again later."
+
+msgid "Spotify requires Premium and permission to control this device."
+msgstr "Spotify requires Premium and permission to control this device."
+
+msgid "Open Spotify on the target device first."
+msgstr "Open Spotify on the target device first."
+
+msgid "Spotify did not respond. Try again."
+msgstr "Spotify did not respond. Try again."
+
+msgid "Missing access token"
+msgstr "Missing access token"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Start timer"
+msgstr "Start timer"
+
+msgid "Spotify API quota is exhausted. Try again later."
+msgstr "Spotify API quota is exhausted. Try again later."

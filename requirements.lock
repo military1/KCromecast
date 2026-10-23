@@ -1,10 +1,13 @@
 casttube==0.2.1
 certifi==2026.10.23
 charset-normalizer==3.5.2
+dbus-fast==5.2.0
 idna==3.20
 ifaddr==0.2.0
+pillow==13.0.0
 protobuf==7.36.2
 PyChromecast==14.0.10
 requests==2.34.2
 urllib3==2.8.0
+websockets==17.3
 zeroconf==0.151.5

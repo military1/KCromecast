@@ -11,6 +11,7 @@ Item {
     id: player
     required property var controller
     property bool choosingDevice: false
+    readonly property bool effectsActive: controller.expanded && !choosingDevice && !controller.reducedMotion
     readonly property var device: controller.device
     readonly property color ink: Kirigami.Theme.textColor
     readonly property color secondaryInk: Qt.rgba(ink.r, ink.g, ink.b, 0.6)
@@ -42,7 +43,8 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         width: parent.width * 0.6
         height: width
-        source: device.artwork || ""
+        source: player.effectsActive ? device.artwork || "" : ""
+        sourceSize: Qt.size(96, 96)
         fillMode: Image.PreserveAspectCrop
         visible: false
         asynchronous: true
@@ -55,7 +57,7 @@ Item {
         blur: 1
         saturation: 0.15
         opacity: 0.13
-        visible: !player.choosingDevice && glowSource.status === Image.Ready
+        visible: player.effectsActive && glowSource.status === Image.Ready
     }
     Rectangle {
         anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
@@ -128,7 +130,9 @@ Item {
                             source: Qt.resolvedUrl("../icons/spotify.svg")
                             Layout.preferredWidth: 10; Layout.preferredHeight: 10
                         }
-                        PC.Label { text: controller.available ? (device.app || L10n.tr(Qt.locale(), "Ready to play")) : controller.online ? L10n.tr(Qt.locale(), "Waiting for speakers") : L10n.tr(Qt.locale(), "Connecting…"); color: player.secondaryInk; font.pixelSize: 10 }
+                        PC.Label { text: controller.available ? (device.app || L10n.tr(Qt.locale(), "Ready to play"))
+                            : controller.online ? (device.connection === "CONNECTING" ? L10n.tr(Qt.locale(), "Reconnecting…") : L10n.tr(Qt.locale(), "Speakers unavailable"))
+                            : controller.hadConnection ? L10n.tr(Qt.locale(), "Reconnecting…") : L10n.tr(Qt.locale(), "Connecting…"); color: player.secondaryInk; font.pixelSize: 10 }
                     }
                 }
                 Rectangle { width: 6; height: 6; radius: 3; color: controller.available ? "#78d9b0" : player.secondaryInk }
@@ -146,7 +150,7 @@ Item {
                 Layout.preferredWidth: 88
                 Layout.preferredHeight: 88
                 cornerRadius: 15
-                source: controller.active ? device.artwork || "" : ""
+                source: controller.expanded && controller.active ? device.artwork || "" : ""
                 scale: controller.active && device.state === "PAUSED" && !controller.reducedMotion ? 0.96 : 1
                 Behavior on scale { NumberAnimation { duration: controller.reducedMotion ? 0 : 180; easing.type: Easing.OutCubic } }
             }
@@ -155,6 +159,8 @@ Item {
                 spacing: 5
                 SelectableText {
                     Layout.fillWidth: true
+                    trackTitle: controller.active ? device.title || "" : ""
+                    trackArtist: device.artist || ""
                     text: controller.active ? device.title || L10n.tr(Qt.locale(), "Playing on your speakers")
                         : !controller.online ? L10n.tr(Qt.locale(), "Connecting to your music") : L10n.tr(Qt.locale(), "Start with your phone")
                     font.pixelSize: 16
@@ -163,6 +169,8 @@ Item {
                 }
                 SelectableText {
                     Layout.fillWidth: true
+                    trackTitle: controller.active ? device.title || "" : ""
+                    trackArtist: device.artist || ""
                     text: controller.active ? device.artist || device.app || ""
                         : L10n.tr(Qt.locale(), "Cast music to these speakers, then control it here.")
                     color: player.secondaryInk
@@ -171,6 +179,8 @@ Item {
                 }
                 SelectableText {
                     Layout.fillWidth: true
+                    trackTitle: controller.active ? device.title || "" : ""
+                    trackArtist: device.artist || ""
                     visible: controller.active && !!device.album && device.album !== device.title
                     text: device.album || ""
                     font.pixelSize: 10
@@ -190,14 +200,17 @@ Item {
                 property real pendingValue: 0
                 enabled: controller.active && !!device.can_seek && !controller.busy
                 onMoved: { pendingValue = value; if (!pressed) seekCommit.restart(); }
-                onPressedChanged: if (!pressed && enabled) { seekCommit.stop(); controller.send("seek", pendingValue); }
+                onPressedChanged: {
+                    if (pressed) pendingValue = value;
+                    else if (enabled) { seekCommit.stop(); controller.send("seek", pendingValue); }
+                }
                 Accessible.name: L10n.tr(Qt.locale(), "Playback position")
-                Binding { target: seek; property: "value"; when: !seek.pressed && !seekCommit.running; value: player.device.position || 0 }
+                Binding { target: seek; property: "value"; when: !seek.pressed && !seekCommit.running; value: Math.min(seek.to, controller.playbackPosition) }
                 Timer { id: seekCommit; interval: 350; onTriggered: if (!seek.pressed) controller.send("seek", seek.pendingValue) }
             }
             RowLayout {
                 Layout.fillWidth: true
-                PC.Label { text: controller.formatTime(seek.pressed ? seek.value : device.position); color: player.secondaryInk; font.pixelSize: 10; font.family: "monospace" }
+                PC.Label { text: controller.formatTime(seek.pressed ? seek.value : controller.playbackPosition); color: player.secondaryInk; font.pixelSize: 10; font.family: "monospace" }
                 Item { Layout.fillWidth: true }
                 PC.Label { text: device.duration ? controller.formatTime(device.duration) : "—:—"; color: player.secondaryInk; font.pixelSize: 10; font.family: "monospace" }
             }
@@ -219,7 +232,7 @@ Item {
                 padding: 14
                 glyph: controller.playing ? "media-playback-pause" : "media-playback-start"
                 hint: controller.playing ? L10n.tr(Qt.locale(), "Pause") : L10n.tr(Qt.locale(), "Play")
-                enabled: controller.active && (device.state === "PAUSED" || !!device.can_pause) && !controller.busy
+                enabled: controller.available && (device.state === "PAUSED" || !!device.can_pause) && (controller.active || device.transport === "spotify") && !controller.busy
                 onClicked: controller.send("toggle")
             }
             GlassButton {
@@ -239,7 +252,7 @@ Item {
                 quiet: true
                 glyph: device.muted ? "audio-volume-muted" : device.volume > 65 ? "audio-volume-high" : "audio-volume-low"
                 hint: device.muted ? L10n.tr(Qt.locale(), "Unmute") : L10n.tr(Qt.locale(), "Mute")
-                enabled: controller.available
+                enabled: controller.available && device.transport !== "spotify"
                 onClicked: controller.send("mute")
             }
             QQC.Slider {
@@ -247,10 +260,13 @@ Item {
                 Layout.fillWidth: true
                 from: 0; to: 100
                 property real pendingValue: 0
-                enabled: controller.available
+                enabled: controller.available && device.can_volume !== false
                 Accessible.name: L10n.tr(Qt.locale(), "Volume")
                 onMoved: { pendingValue = value; if (!pressed) volumeCommit.restart(); }
-                onPressedChanged: if (!pressed && enabled) { volumeCommit.stop(); controller.send("volume", Math.round(pendingValue)); }
+                onPressedChanged: {
+                    if (pressed) pendingValue = value;
+                    else if (enabled) { volumeCommit.stop(); controller.send("volume", Math.round(pendingValue)); }
+                }
                 Keys.onLeftPressed: { value = Math.max(0, value - 1); pendingValue = value; volumeCommit.restart(); }
                 Keys.onRightPressed: { value = Math.min(100, value + 1); pendingValue = value; volumeCommit.restart(); }
                 Binding { target: volume; property: "value"; when: !volume.pressed && !volumeCommit.running; value: player.device.volume || 0 }
@@ -344,15 +360,60 @@ Item {
         y: moreButton.height
         QQC.Menu {
             title: L10n.tr(Qt.locale(), "Sleep timer")
-            enabled: controller.available
+            enabled: controller.available || controller.sleepRemaining > 0
             QQC.MenuItem { text: L10n.tr(Qt.locale(), "15 minutes"); onTriggered: controller.send("sleep", 15) }
             QQC.MenuItem { text: L10n.tr(Qt.locale(), "30 minutes"); onTriggered: controller.send("sleep", 30) }
             QQC.MenuItem { text: L10n.tr(Qt.locale(), "45 minutes"); onTriggered: controller.send("sleep", 45) }
             QQC.MenuItem { text: L10n.tr(Qt.locale(), "1 hour"); onTriggered: controller.send("sleep", 60) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "Custom timer…"); enabled: controller.available; onTriggered: sleepDialog.open() }
             QQC.MenuSeparator {}
             QQC.MenuItem { text: L10n.tr(Qt.locale(), "Cancel timer"); enabled: controller.sleepRemaining > 0; onTriggered: controller.send("sleep", 0) }
         }
         QQC.MenuSeparator {}
+        QQC.MenuItem { text: "Spotify Connect…"; icon.name: Qt.resolvedUrl("../icons/spotify.svg"); onTriggered: spotifySetup.open() }
+        QQC.MenuItem { text: L10n.tr(Qt.locale(), "Reconnect speakers"); icon.name: "view-refresh"; onTriggered: controller.refresh() }
+        QQC.MenuSeparator {}
         QQC.MenuItem { text: L10n.tr(Qt.locale(), "Stop casting"); icon.name: "media-playback-stop"; enabled: controller.active; onTriggered: controller.send("stop") }
+    }
+
+    SpotifySetup { id: spotifySetup; parent: QQC.Overlay.overlay; controller: player.controller }
+    QQC.Dialog {
+        id: sleepDialog
+        parent: QQC.Overlay.overlay
+        anchors.centerIn: parent
+        width: 302
+        modal: true
+        title: L10n.tr(Qt.locale(), "Sleep timer")
+        footer: QQC.DialogButtonBox {
+            QQC.Button { text: L10n.tr(Qt.locale(), "Start timer"); QQC.DialogButtonBox.buttonRole: QQC.DialogButtonBox.AcceptRole }
+            QQC.Button { text: L10n.tr(Qt.locale(), "Cancel"); QQC.DialogButtonBox.buttonRole: QQC.DialogButtonBox.RejectRole }
+        }
+        onAccepted: controller.send("sleep", {minutes: customMinutes.value, fade_seconds: fade.checked && device.can_volume !== false ? fadeSeconds.value : 0})
+        contentItem: ColumnLayout {
+            PC.Label { text: L10n.tr(Qt.locale(), "Minutes"); Layout.fillWidth: true }
+            QQC.SpinBox { id: customMinutes; from: 1; to: 1440; value: 45; editable: true; Layout.fillWidth: true }
+            QQC.CheckBox {
+                id: fade
+                text: L10n.tr(Qt.locale(), "Fade out before pausing")
+                enabled: device.can_volume !== false
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                contentItem: PC.Label {
+                    text: fade.text
+                    font: fade.font
+                    wrapMode: Text.WordWrap
+                    leftPadding: fade.indicator.width + fade.spacing
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+            PC.Label { text: L10n.tr(Qt.locale(), "Fade duration, seconds"); visible: fade.checked; Layout.fillWidth: true }
+            QQC.SpinBox { id: fadeSeconds; from: 5; to: 300; value: 30; editable: true; visible: fade.checked; Layout.fillWidth: true }
+            PC.Label {
+                Layout.fillWidth: true
+                text: L10n.tr(Qt.locale(), "The timer survives a service restart. During computer sleep, it runs when the computer wakes.")
+                wrapMode: Text.WordWrap
+                font.pixelSize: 11
+            }
+        }
     }
 }
