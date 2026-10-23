@@ -1,32 +1,26 @@
 # Changelog
 
+## 1.1.1 — 2026-10-23
+
+- Add a one-command installer with dependency checks, panel setup, updates and uninstallation.
+- Install the companion service independently of the download directory.
+- Fix late snapshots and receiver callbacks after a service or network restart.
+- Avoid blocking receiver callbacks while a sleep action waits for a response.
+- Validate saved timers and discard deadlines older than two minutes.
+- Handle revoked Spotify credentials and malformed API responses; reuse cached Spotify artwork.
+- Add English and Russian documentation, screenshots, CI and release builds.
+
 ## 1.1.0 — 2026-10-23
 
-- MPRIS и отдельный медиаплеер KCromecast в KDE: мультимедийные клавиши, обложка, метаданные, громкость, перемотка и вызов пульта.
-- Поток событий WebSocket вместо частого опроса, локальный прогресс, ограниченная очередь состояний и резервное HTTP-подключение.
-- Тайм-ауты, последовательные команды и объединение ожидающих изменений громкости; обработка сна и смены сети через системные сигналы.
-- Переподключение пересоздаёт Zeroconf и подключения. Учтено нормальное завершение потоков PyChromecast с нулевым тайм-аутом и устаревшие подключения от прежней сети.
-- Поиск трека в браузере, YouTube Music и Spotify; копирование исполнителя и названия вместе.
-- Произвольный таймер сна до суток, сохранение срока, отмена и плавное уменьшение громкости перед паузой. При отсутствии таймера нет периодических пробуждений его потока.
-- Spotify Connect через официальный Web API: настройка Client ID, PKCE, вход в браузере, устройства аккаунта, управление и передача воспроизведения. Токены не передаются QML; учтены ограничения устройств, Premium, обновление токенов и квоты API.
-- Изображения до 512 px, отдельный пул с двумя рабочими потоками, защита от повторных загрузок и ограничение кэша 64 МиБ / 128 файлов. Эффекты и декодирование обложек выключены при закрытом пульте.
-- Автоматические проверки MPRIS в отдельной D-Bus-сессии, настоящего Qt WebSocket-клиента, таймера, OAuth, квот и кэша.
+- Add KDE media controls through MPRIS and event-driven widget updates.
+- Add a persistent sleep timer with optional fade-out, track search and Spotify Connect setup.
+- Improve reconnection, request timeouts and artwork caching.
 
 ## 1.0.1 — 2026-10-23
 
-- Возвращена постоянная нижняя подсказка о средней кнопке и колесе на значке в панели. Таймер и ошибки показываются отдельной строкой.
-- Автоматический выбор языка: русский для основного русского языка системы, английский для любого другого. Оба каталога покрывают меню, настройки, подсказки, доступность и ошибки службы.
-- Название трека, исполнитель и альбом выделяются и копируются через Ctrl+C или меню правой кнопки. При копировании без выделения сохраняется полное название, даже если оно не помещается в поле.
-- Компактный размер 352 × 392; проверка языков в настоящем Qt 6 и проверка буфера обмена.
+- Restore the mouse-control hint and add selectable track metadata.
+- Select Russian for a Russian system language and English otherwise.
 
 ## 1.0.0 — 2026-10-23
 
-- Самостоятельный форк KCromecast с отдельным идентификатором и векторным значком.
-- Компактный размер 352 × 372, обложка рядом с метаданными, без постоянной строки подсказок.
-- Распознавание Spotify Cast и нормализация данных об исполнителях и альбоме.
-- Полная переработка пульта: обложка, метаданные, стеклянные поверхности и системная палитра KDE.
-- Постоянный модуль связи на PyChromecast вместо запуска catt и Plasma5Support.
-- Автоматическое обнаружение отдельных колонок и групп, подхват мобильной сессии.
-- Поддержка возможностей приёмника, перемотка с сохранением паузы и синхронизация громкости.
-- Таймер сна, быстрые действия на значке, клавиатура и русский перевод.
-- Пользовательская установка, резервные копии, сборка дистрибутива и автоматические проверки.
+- Initial KCromecast release: a compact Plasma 6 remote with artwork and a PyChromecast companion service.

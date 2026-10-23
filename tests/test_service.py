@@ -43,6 +43,27 @@ class ManagerTestCase(unittest.TestCase):
 
 
 class ReceiverTests(ManagerTestCase):
+    def test_stale_media_callback_cannot_update_a_new_connection(self):
+        manager, cast, status = self.make_manager()
+        manager.devices["group"].cast = Mock()
+        status.media_metadata = {"title": "Stale track"}
+        manager.update_media("group", status, cast)
+        self.assertEqual(manager.snapshot()["devices"][0]["title"], "Track")
+
+    def test_invalid_artwork_url_does_not_drop_the_track(self):
+        _, _, status = self.make_manager()
+        status.media_metadata = {"title": "Track", "images": [{"url": "https://[invalid"}, {"url": "https://user:password@example.com/image"}]}
+        media = media_snapshot(status)
+        self.assertEqual(media["title"], "Track")
+        self.assertEqual(media["artwork_remote"], "")
+
+    def test_timer_can_be_cancelled_after_its_receiver_disappears(self):
+        manager, _, _ = self.make_manager()
+        manager.command("group", "sleep", 30)
+        manager.devices.clear()
+        manager.command("group", "sleep", 0)
+        self.assertEqual(manager.sleep.snapshot()["device"], "")
+
     def test_recovery_completes_when_old_disconnect_reports_join_timeout(self):
         manager, cast, _ = self.make_manager()
         manager.browser, manager.zc = Mock(), Mock()

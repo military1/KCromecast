@@ -1,0 +1,27 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: sudo apt-get update && sudo apt-get install -y gettext dbus-daemon
+      - run: python -m pip install -e .
+      - run: python scripts/translations.py
+      - run: python -m unittest discover -s tests -v
+      - run: bash -n install.sh uninstall.sh
+      - run: python scripts/build.py
+      - run: git diff --exit-code -- package/contents/ui/Translations.js

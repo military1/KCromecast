@@ -76,6 +76,24 @@ class SpotifyTests(unittest.TestCase):
         self.assertEqual(self.client.devices_snapshot(), [])
         self.assertNotIn("secret", self.client.path.read_text())
 
+    @patch("kcromecast.spotify.requests.Session.post")
+    def test_revoked_refresh_token_removes_cached_devices(self, post):
+        self.client.credentials = {"client_id": self.client_id, "refresh_token": "revoked", "expires_at": 0}
+        self.client.devices = [{"id": "speaker", "name": "Speaker"}]
+        post.return_value.status_code = 400
+        with self.assertRaisesRegex(ValueError, "sign-in expired"):
+            self.client._access_token()
+        self.assertFalse(self.client.public_state()["connected"])
+        self.assertEqual(self.client.devices_snapshot(), [])
+
+    @patch("kcromecast.spotify.requests.Session.request")
+    def test_nonobject_api_response_returns_a_readable_error(self, request):
+        self.client.credentials = {"client_id": self.client_id, "refresh_token": "refresh", "access_token": "access", "expires_at": time.time() + 3600}
+        request.return_value.status_code = 200
+        request.return_value.json.return_value = []
+        with self.assertRaisesRegex(ValueError, "Spotify did not respond"):
+            self.client.api("GET", "me/player")
+
     @patch("kcromecast.spotify.requests.Session.request")
     def test_developer_quota_exhaustion_uses_long_backoff(self, request):
         self.client.credentials = {"client_id": self.client_id, "refresh_token": "refresh", "access_token": "access", "expires_at": time.time() + 3600}

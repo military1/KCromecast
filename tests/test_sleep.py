@@ -47,6 +47,33 @@ class SleepTests(unittest.TestCase):
         self.assertIsNone(self.step())
         self.assertFalse(self.commands)
 
+    def test_saved_numeric_strings_are_normalized(self):
+        write_json(self.path, {"device": "group", "deadline": str(time.time() + 600), "minutes": "10", "fade_seconds": "30"})
+        restored = self.make_timer()
+        self.assertGreater(restored.snapshot()["remaining"], 590)
+        self.assertEqual(restored.snapshot()["fade_seconds"], 30)
+
+    def test_incomplete_saved_fade_is_ignored(self):
+        write_json(self.path, {"device": "group", "deadline": time.time() + 600, "minutes": 10, "fade_seconds": 30, "original_volume": 50})
+        self.assertEqual(self.make_timer().snapshot()["device"], "")
+
+    def test_receiver_wakeup_does_not_wait_for_a_command(self):
+        entered, release = threading.Event(), threading.Event()
+        def slow_command():
+            with self.timer.condition:
+                entered.set()
+                release.wait(2)
+        worker = threading.Thread(target=slow_command)
+        worker.start()
+        self.assertTrue(entered.wait(1))
+        try:
+            start = time.monotonic()
+            self.timer.wake()
+            self.assertLess(time.monotonic() - start, .1)
+        finally:
+            release.set()
+            worker.join()
+
     def test_ui_snapshot_does_not_wait_for_a_slow_timer_command(self):
         entered, release = threading.Event(), threading.Event()
         def slow_action():
@@ -110,6 +137,12 @@ class SleepTests(unittest.TestCase):
         self.step()
         self.assertEqual(self.timer.snapshot()["device"], "")
         self.assertFalse(self.commands)
+
+    def test_very_old_deadline_does_not_pause_a_reconnected_receiver(self):
+        self.timer.data = {"device": "group", "deadline": time.time() - 1000, "minutes": 1, "fade_seconds": 0}
+        self.step()
+        self.assertFalse(self.commands)
+        self.assertEqual(self.timer.snapshot()["device"], "")
 
     def test_invalid_and_nonfinite_values_do_not_set_timer(self):
         for value in [-1, 1441, float("nan"), float("inf"), "invalid"]:

@@ -208,8 +208,8 @@ msgstr "Fade out before pausing"
 msgid "Fade duration, seconds"
 msgstr "Fade duration, seconds"
 
-msgid "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
-msgstr "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
+msgid "The timer is saved across restarts. The computer must be awake to pause playback."
+msgstr "The timer is saved across restarts. The computer must be awake to pause playback."
 
 msgid "Spotify account connected"
 msgstr "Spotify account connected"
@@ -273,3 +273,6 @@ msgstr "Start timer"
 
 msgid "Spotify API quota is exhausted. Try again later."
 msgstr "Spotify API quota is exhausted. Try again later."
+
+msgid "Sleep timer expired while the computer or speakers were unavailable."
+msgstr "Sleep timer expired while the computer or speakers were unavailable."

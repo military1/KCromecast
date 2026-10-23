@@ -1,108 +1,114 @@
 # KCromecast
 
-Пульт Chromecast для панели KDE Plasma. Включите музыку на телефоне, выберите колонки — и управляйте воспроизведением с компьютера. Firefox или Chrome для работы пульта не нужны.
+**English** · [Русский](README.ru.md)
 
-KCromecast — самостоятельный форк концепции [KCast](https://github.com/Agundur-KDE/KCast). Интерфейс и модуль связи переработаны. У проекта собственный идентификатор `org.kcromecast.widget`, исходники, установщик и версия; обновления KCast его не затрагивают.
+A Chromecast remote for the KDE Plasma panel. Start music on your phone, choose your speakers, and control playback from your desktop. Works alongside Firefox, Chrome or any other browser; no browser extension is needed.
 
-## Интерфейс
+![KCromecast playing YouTube Music](docs/screenshots/player.png)
 
-Компактная обложка рядом с названием трека, исполнителем и альбомом. Обычный размер пульта — 352 × 392 логических пикселя; уведомление или таймер добавляет небольшую строку. Внизу постоянно видна подсказка про среднюю кнопку и колесо на значке в панели. Название трека, исполнителя и альбома можно выделить мышью и скопировать через Ctrl+C. Правая кнопка открывает копирование и поиск в интернете, YouTube Music и Spotify; без выделения копируется весь текст выбранного поля, включая скрытую часть длинного названия.
+## Install
 
-Прозрачные поверхности с тонкими границами и мягким свечением от обложки сочетаются с цветами, шрифтами и элементами управления KDE. Светлая и тёмная палитры берутся из системы. В настройках можно изменить плотность стекла и уменьшить анимацию. Размытие самого окна выполняет композитор Plasma, если его поддерживает выбранная тема.
-
-Главный экран содержит только выбор колонок, прогресс, предыдущий трек, паузу/продолжение, следующий трек и громкость. Таймер сна и остановка находятся в меню «Дополнительно». Списки файлов, ссылки, запуск трансляции рабочего стола и настройки сети не занимают основной экран.
-
-![Компактный KCromecast](docs/screenshots/player.png)
-
-## Возможности
-
-- Подхват существующих Cast-сессий: YouTube Music, Spotify и другие приложения, использующие стандартное управление Google Cast. Источник определяется автоматически, Spotify отмечается отдельным значком. Поддерживаются обложка, трек, исполнители, альбом и доступные команды приёмника.
-- Отдельные колонки и заранее созданные группы Google Home; автоматическое обнаружение по mDNS.
-- Постоянные соединения и события состояния. После пробуждения компьютера, смены сети и команды «Переподключить колонки» пересоздаются сетевое обнаружение и подключения; трансляция на колонках продолжает жить независимо от пульта.
-- Интеграция MPRIS: отдельный плеер KCromecast в управлении музыкой KDE, метаданные, обложка, перемотка, громкость и мультимедийные клавиши. Клавиши действуют на плеер, выбранный системой; KCromecast не перехватывает их у других приложений.
-- Передача изменений в интерфейс через локальный WebSocket, расчёт прогресса в открытом пульте. При недоступности потока событий используется резервный HTTP-опрос.
-- Предыдущий/следующий трек и перемотка с учётом возможностей активного приёмника. Недоступные команды отключены.
-- Обложки до 512 × 512 с учётом пропорций, отдельный пул загрузки, повторное использование и задержка повторных попыток. Кэш ограничен 128 файлами и 64 МиБ, текущие обложки защищены от удаления. Графические эффекты отключаются при закрытом пульте.
-- Громкость и выключение звука; фактическое значение синхронизируется с колонками.
-- Средняя кнопка на значке: пауза/продолжение. Колесо: относительная громкость без скачков.
-- Клавиши в открытом пульте: пробел — пауза; стрелки — треки. В ползунках стрелки управляют их значениями.
-- Таймер сна на 15, 30, 45 или 60 минут либо произвольное время от 1 до 1440 минут. Срок и устройство сохраняются при перезапуске службы. Можно включить плавное уменьшение громкости на 5–300 секунд перед паузой; после неё восстанавливается прежняя громкость. Изменение громкости вручную во время затухания отменяет таймер. Пока таймер не установлен, его поток не выполняет периодических проверок.
-- Поиск трека в браузере и копирование строки «исполнитель — название» через меню правой кнопки.
-- Дополнительное управление устройствами Spotify Connect после входа в аккаунт. Без подключения Spotify его модуль ждёт событий и не опрашивает интернет.
-- Язык интерфейса выбирается автоматически по первому языку интерфейса системы: русский (`ru`, включая региональные варианты) — русский; любой другой — английский. Вторичные языки и язык форматов чисел это правило не меняют. Переводятся меню, настройки, подсказки и сообщения службы; названия музыки и устройств сохраняются как переданы колонками.
-- Подписи для средств доступности, управление с клавиатуры и копирование метаданных.
-
-## Требования и совместимость
-
-KDE Plasma 6, Qt 6.6 или новее с QML-модулем QtWebSockets, Python 3.11 или новее. Для установки: `kpackagetool6`, `qdbus6`, `msgfmt`, Python с модулем `venv` и пользовательский systemd.
-
-Используются импорты Qt/KDE без фиксированных версий и `QtQuick.Effects.MultiEffect`. Нет зависимости от Plasma5Support, устаревших DataSource/executable, Qt Graphical Effects или внутренних QML-модулей Plasma. Модуль связи работает напрямую через публичный API PyChromecast, без `catt`.
-
-Зависимости имеют диапазоны совместимых версий; установщик обновляет их и сохраняет фактический состав в `~/.local/share/kcromecast/requirements.lock`. Новые основные версии PyChromecast требуют проверки перед расширением диапазона. Совместимость с ещё не выпущенными Plasma/Qt не заявляется как проверенная.
-
-## Установка и обновление
+Run this in a terminal inside **KDE Plasma 6**:
 
 ```sh
-python3 scripts/install.py
+curl -fsSL https://raw.githubusercontent.com/military1/KCromecast/main/install.sh | bash
 ```
 
-Установщик работает от текущего пользователя, создаёт отдельное виртуальное окружение и фоновую службу `kcromecast.service`. Если в панели есть KCast, заменяет его на KCromecast на той же позиции. Настройки панели и прежняя версия форка сохраняются в `~/.local/share/kcromecast/backup-*`.
+The installer checks requirements, installs missing packages on Arch-based systems, Debian/Ubuntu and Fedora, installs the widget and companion service for your user, and adds the widget to the panel. Administrator access is used only for missing system packages. Plasma panels are reloaded; open applications stay open.
 
-При обновлении уже загруженного QML может потребоваться перезапуск панели:
+You can also download the [latest release](https://github.com/military1/KCromecast/releases/latest), extract the **source ZIP**, and run `bash install.sh`. Installing the `.plasmoid` alone does **not** install the companion service.
+
+Run the same command to update. Your settings and Spotify connection are kept. The download folder can be deleted after installation.
+
+<details>
+<summary>Installer options</summary>
 
 ```sh
-systemctl --user restart plasma-plasmashell.service
+bash install.sh --check                 # Check without changing anything
+bash install.sh --no-system-packages    # Dependencies are already managed by your distro
+bash install.sh --no-restart            # Load the new interface at your next login
+bash install.sh --no-panel              # Add the widget yourself using Plasma's widget picker
 ```
 
-Архив `.plasmoid` содержит интерфейс; для нового компьютера нужен также модуль связи. Рекомендуемый способ установки полного комплекта — исходный архив и команда выше.
+Other distributions work when the required packages are installed. The installer does not upgrade a Plasma 5 desktop to Plasma 6.
 
-Компьютер и колонки должны находиться в одной локальной сети. Ethernet на компьютере и Wi-Fi на колонках совместимы, если роутер пропускает mDNS и соединения между ними. Создание и изменение состава групп выполняется в Google Home. Spotify через Google Cast работает без подключения аккаунта к пульту. Для устройств Spotify Connect доступен отдельный модуль официального Spotify Web API. Управление чужими очередями ограничено возможностями конкретного Cast-приложения; библиотека YouTube Music на компьютере автоматически не переносится.
+</details>
 
-## Подключение Spotify Connect
+## Features
 
-В меню «Дополнительно → Spotify Connect…» есть поле Client ID, адрес возврата и кнопка входа.
+- Control existing Google Cast sessions, including YouTube Music and Spotify Cast.
+- Discover speakers and existing Google Home groups on your local network.
+- Play/pause, previous/next track, seeking, volume and mute when the receiver supports them.
+- Track title, artist, album and artwork; select and copy text or search for the track in your browser.
+- Middle-click the panel icon to play/pause; scroll over it to adjust volume.
+- KDE media controls and multimedia keys through MPRIS.
+- Sleep timer with custom duration, optional fade-out and persistence across service restarts.
+- Optional Spotify Connect control through the official Spotify Web API.
+- Russian UI for a Russian system language; English for every other language.
 
-![Подключение Spotify Connect](docs/screenshots/spotify-connect.png)
+Updates from Cast receivers are forwarded to the widget over a local event connection. Artwork is cached, and visual effects are inactive when the popup is closed.
 
-1. Откройте [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) кнопкой в окне и создайте личное приложение с Web API.
-2. Добавьте точный Redirect URI: `http://127.0.0.1:17844/spotify/callback`.
-3. Если требуется, внесите свой Spotify-аккаунт в список пользователей приложения. Скопируйте Client ID в виджет и нажмите «Войти через Spotify».
-4. Завершите вход в браузере. Устройства Spotify появятся в общем списке. Выбор устройства задаёт цель управления; кнопка Play на неактивном устройстве передаёт ему текущее воспроизведение аккаунта.
+<details>
+<summary>More screenshots</summary>
 
-Используется [Authorization Code with PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow), без Client Secret и пароля в виджете. Для управления воспроизведением нужен Spotify Premium; для личного приложения действуют [ограничения Development Mode](https://developer.spotify.com/documentation/web-api/concepts/quota-modes). Некоторые устройства и команды Spotify API недоступны; они отключаются в интерфейсе. Отдельного mute в Web API нет — у Spotify Connect доступен регулятор громкости.
+![Playback menu](docs/screenshots/controls.png)
+![Copying and searching for a track](docs/screenshots/track-menu.png)
+![Paused playback](docs/screenshots/paused.png)
 
-Токены хранятся только в `~/.config/kcromecast/spotify.json` с правами 0600. «Отключить аккаунт» удаляет их из файла. Для отзыва разрешения на стороне Spotify используйте список приложений в аккаунте Spotify. Ограничения частоты запросов, Retry-After и исчерпание квоты обрабатываются без немедленных повторов. Spotify Web API требует опроса состояния: 5 секунд при воспроизведении, 15 при паузе; поток событий устраняет опрос между виджетом и локальной службой.
+</details>
 
-Таймер выполняется компьютером: пока компьютер выключен или спит, послать команду колонкам невозможно. Служба проверяет сохранённый срок при запуске и пробуждении; если колонки недоступны после истечения срока, повторяет попытки ограниченное время. Время на компьютере должно быть настроено правильно.
+## Requirements and compatibility
 
-## Архитектура
+| Component | Requirement |
+| --- | --- |
+| Desktop | KDE Plasma **6.0+**, within the Plasma 6 series |
+| Qt | **6.6+**, including the QtWebSockets and QtQuick.Effects QML modules |
+| Python | **3.11+** |
+| Session | A running Plasma desktop and a working systemd user session |
+| Network | Computer and Cast speakers on the same LAN, with mDNS allowed |
 
-`package/` — интерфейс Plasma, SVG-значок и настройки KConfig. `backend/kcromecast/` — обнаружение, соединения, метаданные, обложки и команды. `scripts/` — установка и сборка. `tests/` — проверки поведения.
+The current version has been tested on **Plasma 6.8.1, Qt 6.12.0 and Wayland**, with two Technics SC-C30 speakers and their Cast group. Plasma 6.0 / Qt 6.6 is the API baseline, not a claim that every intervening version has been tested. Plasma 5 and future major Plasma versions are not supported. Details and test commands are in [docs/TESTING.md](docs/TESTING.md).
 
-Интерфейс получает изменения через `127.0.0.1:17845/v1/events`. Команды и резервные снимки доступны на `127.0.0.1:17844`. HTTP проверяет Host и Bearer-токен, поток событий — Host, отсутствие браузерного Origin и отдельное первое сообщение авторизации. Очередь состояния хранит только самый свежий снимок. Запросы ограничены по размеру, времени и параллельности; интерфейс последовательно отправляет команды и объединяет ожидающие изменения громкости. Сроки таймера, выбранное устройство и токены записываются атомарно в отдельные файлы. Токен не входит в исходники или дистрибутив. Не открывает CORS для веб-страниц. Пароли Google и cookies браузера не используются.
+The widget uses public Qt/KDE APIs and does not use Plasma5Support or `catt`. Blur and transparency depend on your Plasma theme and compositor. Ethernet on the computer and Wi-Fi on the speakers work together when the router allows local traffic.
 
-## Проверка и сборка
+## Spotify Connect
+
+Spotify Cast works without signing in to KCromecast. For Spotify Connect, open **⋮ → Spotify Connect…**, create a personal app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard), and enter its Client ID.
+
+Add this exact redirect URI to the app:
+
+```text
+http://127.0.0.1:17844/spotify/callback
+```
+
+Click **Sign in with Spotify** and finish authorization in your browser. Your Connect devices will appear in the speaker list. Playing on an inactive Connect device transfers your account's current playback to it.
+
+Playback control requires Spotify Premium and the app's user permissions. Spotify's [development-mode limits](https://developer.spotify.com/documentation/web-api/concepts/quota-modes) apply. Some devices do not expose remote volume or playback control. Tokens are stored locally with user-only permissions; the widget never asks for your password or Client Secret. Live Spotify Connect playback has not yet been verified with a signed-in account.
+
+## Limits
+
+This is a remote control, not an audio sender. It does not cast Firefox tabs, desktop audio or local files. Start a Cast session from a supported music app first. Group creation stays in Google Home. Available queue and seek commands depend on the active receiver app.
+
+The sleep timer runs on the computer. It cannot pause speakers while the computer is off or asleep. An overdue timer gets a two-minute retry window; an older timer is discarded to avoid pausing a later session. Changing volume manually during a fade cancels that timer.
+
+## Remove
 
 ```sh
-python3 scripts/translations.py
-~/.local/share/kcromecast/venv/bin/python -m unittest discover -s tests -v
-qmllint -I /usr/lib/qt6/qml package/contents/ui/*.qml
-QT_QPA_PLATFORM=offscreen /usr/lib/qt6/bin/qmltestrunner -input tests/qml
-python3 scripts/build.py
+bash ~/.local/share/kcromecast/uninstall.sh
 ```
 
-Переводы хранятся в `translations/en.po` и `translations/ru.po`. Установка и сборка компилируют оба каталога и общий `Translations.js`; `Locale.js` применяет правило выбора только русского или английского. При изменении текстов обновляйте оба PO-файла. Проверка локализации запускает Qt 6 с разными системными языками, проверка QML — выделение и копирование текста.
+Settings and backups are kept. Add `--purge` to remove them and the stored Spotify tokens. Standard XDG data/config/cache locations are respected.
 
-Артефакты появятся в `dist/`: пакет виджета и полный исходный архив. QML дополнительно проверяется в запущенной Plasma; реальное управление проверяется на колонках, поскольку модель приёмника и приложение влияют на набор команд.
-
-Журнал службы:
+For connection problems, use **⋮ → Reconnect speakers** and check:
 
 ```sh
-journalctl --user -u kcromecast.service -b
+journalctl --user -u kcromecast.service -n 50
 ```
 
-## Авторство и лицензия
+[Report a bug](https://github.com/military1/KCromecast/issues) with your Plasma/Qt versions, speaker model and a short description of what happened.
 
-KCromecast contributors, 2026. GPL-3.0-or-later, см. `LICENSE`.
+## Development
 
-Основан на идее и пользовательском сценарии KCast, автор Alec / Agundur, 2025. Новый интерфейс и модуль связи написаны для KCromecast. PyChromecast и его зависимости остаются отдельными библиотеками со своими лицензиями. Названия Google Cast, Chromecast, KDE, Breeze и Apple принадлежат их владельцам; проект с ними не аффилирован.
+See [docs/TESTING.md](docs/TESTING.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+GPL-3.0-or-later. Maintained by [military1](https://github.com/military1). Inspired by [KCast](https://github.com/Agundur-KDE/KCast) by Alec / Agundur. KDE, Google Cast and Spotify are trademarks of their respective owners.

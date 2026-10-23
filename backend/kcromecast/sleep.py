@@ -13,17 +13,25 @@ class SleepTimer:
     def __init__(self, path, get_state, command, changed):
         self.path, self.get_state, self.command, self.changed = path, get_state, command, changed
         self.condition = threading.Condition(threading.RLock())
+        self.wake_event = threading.Event()
         self.closed = False
-        self.generation = 0
         self.data = read_json(path)
         try:
-            valid = (isinstance(self.data.get("device"), str) and bool(self.data["device"])
-                     and math.isfinite(float(self.data.get("deadline", 0)))
-                     and 0 < float(self.data.get("minutes", 0)) <= 1440
-                     and 0 <= int(self.data.get("fade_seconds", 0)) <= 300)
-        except (TypeError, ValueError):
-            valid = False
-        if not valid:
+            deadline = float(self.data.get("deadline", 0))
+            minutes = float(self.data.get("minutes", 0))
+            fade = int(self.data.get("fade_seconds", 0))
+            if not (isinstance(self.data.get("device"), str) and self.data["device"]
+                    and math.isfinite(deadline) and math.isfinite(minutes)
+                    and 0 < minutes <= 1440 and 0 <= fade <= 300):
+                raise ValueError
+            self.data = {"device": self.data["device"], "deadline": deadline, "minutes": minutes, "fade_seconds": fade,
+                         **{key: float(self.data[key]) for key in ("original_volume", "last_volume") if key in self.data}}
+            if ("original_volume" in self.data) != ("last_volume" in self.data):
+                raise ValueError
+            for key in ("original_volume", "last_volume"):
+                if key in self.data and not 0 <= self.data[key] <= 100:
+                    raise ValueError
+        except (TypeError, ValueError, OverflowError):
             self.data = {}
         self.state_lock = threading.Lock()
         self.public_data = dict(self.data)
@@ -45,7 +53,7 @@ class SleepTimer:
     def set(self, device, minutes, fade_seconds=0):
         try:
             minutes, fade_seconds = float(minutes), int(fade_seconds)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, OverflowError):
             raise ValueError("Invalid sleep timer") from None
         if not math.isfinite(minutes) or not 0 <= minutes <= 1440 or not 0 <= fade_seconds <= 300:
             raise ValueError("Invalid sleep timer")
@@ -54,9 +62,8 @@ class SleepTimer:
             with self.condition:
                 self.data = {"device": device, "deadline": time.time() + minutes * 60,
                              "minutes": minutes, "fade_seconds": min(fade_seconds, int(minutes * 60))}
-                self.generation += 1
                 self._save()
-                self.condition.notify_all()
+                self.wake_event.set()
             self.changed()
 
     def _save(self):
@@ -79,11 +86,12 @@ class SleepTimer:
         # Serialize cancellation with a fade step; no late command may follow it.
         with self.condition:
             old, self.data = self.data, {}
-            self.generation += 1
+            if not old:
+                return
             self._save()
             if restore:
                 self._restore(old)
-            self.condition.notify_all()
+            self.wake_event.set()
         self.changed()
 
     def user_volume(self, device):
@@ -93,8 +101,9 @@ class SleepTimer:
             self.cancel(restore=False)
 
     def wake(self):
-        with self.condition:
-            self.condition.notify_all()
+        # Cast callbacks must never wait for the command lock: the timer itself
+        # may be waiting for an acknowledgement from that same receiver thread.
+        self.wake_event.set()
 
     def _step(self):
         """Run with the condition held. Returns delay until the next useful work."""
@@ -102,16 +111,16 @@ class SleepTimer:
             return None
         data = self.data
         remaining = data["deadline"] - time.time()
+        if remaining < -120:
+            self.data = {}
+            self._save()
+            self.changed("Sleep timer expired while the computer or speakers were unavailable.")
+            return None
         fade = data.get("fade_seconds", 0)
         if remaining > fade:
             return remaining - fade
         state = self.get_state(data["device"])
         if not state or not state.get("connected"):
-            if remaining < -120:
-                self.data = {}
-                self._save()
-                self.changed("The sleep timer ended, but the speakers did not respond.")
-                return None
             return 3
         if remaining <= 0 or state.get("state") not in ("PLAYING", "BUFFERING"):
             if state.get("state") in ("PLAYING", "BUFFERING"):
@@ -142,19 +151,21 @@ class SleepTimer:
         return min(5 if data["device"].startswith("spotify:") else 1, remaining)
 
     def _run(self):
-        with self.condition:
-            while not self.closed:
+        while not self.closed:
+            self.wake_event.clear()
+            with self.condition:
+                if self.closed:
+                    break
                 try:
                     delay = self._step()
                 except Exception:
                     LOG.debug("Sleep action failed; retrying", exc_info=True)
                     delay = 3
-                if not self.closed:
-                    self.condition.wait(delay)
+            if not self.closed:
+                self.wake_event.wait(delay)
 
     def stop(self):
-        with self.condition:
-            self.closed = True
-            self.condition.notify_all()
+        self.closed = True
+        self.wake_event.set()
         if self.thread.is_alive():
             self.thread.join(timeout=8)

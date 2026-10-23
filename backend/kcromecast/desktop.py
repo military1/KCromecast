@@ -234,7 +234,7 @@ class MediaPlayer(ServiceInterface):
 
 
 class DesktopRuntime:
-    def __init__(self, manager, token, port=17845):
+    def __init__(self, manager, token, port=17845, failure_callback=None):
         self.manager, self.token, self.port = manager, token, port
         self.loop = None
         self.event = None
@@ -243,6 +243,7 @@ class DesktopRuntime:
         self.raise_pending = False
         self.ready = threading.Event()
         self.failure = None
+        self.failure_callback = failure_callback
         self.thread = threading.Thread(target=self._thread, name="desktop", daemon=True)
 
     def start(self):
@@ -263,6 +264,9 @@ class DesktopRuntime:
             self.failure = error
             self.ready.set()
             LOG.exception("Desktop integration stopped")
+        finally:
+            if self.failure and self.failure_callback:
+                self.failure_callback()
 
     async def _run(self):
         self.loop = asyncio.get_running_loop()
@@ -294,6 +298,7 @@ class DesktopRuntime:
                              close_timeout=2, process_request=self._check_request):
                 self.ready.set()
                 worker = asyncio.create_task(self._publish())
+                worker.add_done_callback(self._publisher_finished)
                 self.event.set()
                 await self.closed.wait()
                 worker.cancel()
@@ -304,6 +309,11 @@ class DesktopRuntime:
                 if bus:
                     bus.disconnect()
 
+    def _publisher_finished(self, task):
+        if not task.cancelled() and task.exception():
+            self.failure = task.exception()
+            self.closed.set()
+
     def _system_signal(self, message):
         if message.message_type != MessageType.SIGNAL:
             return
@@ -313,7 +323,7 @@ class DesktopRuntime:
             self.manager.reconnect()
 
     def _check_request(self, connection, request):
-        if request.headers.get("Host") != f"127.0.0.1:{self.port}" or request.path != "/v1/events":
+        if request.headers.get_all("Host") != [f"127.0.0.1:{self.port}"] or request.path != "/v1/events":
             return connection.respond(HTTPStatus.FORBIDDEN, "Forbidden\n")
         if len(self.clients) >= 8:
             return connection.respond(HTTPStatus.SERVICE_UNAVAILABLE, "Busy\n")

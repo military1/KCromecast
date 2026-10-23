@@ -26,10 +26,11 @@ from . import __version__
 from .artwork import ArtworkCache
 from .sleep import SleepTimer
 from .storage import read_json, write_json
+from .paths import CONFIG_DIR, CACHE_DIR
 
 LOG = logging.getLogger("kcromecast")
-CONFIG = Path.home() / ".config/kcromecast/service.json"
-CACHE = Path.home() / ".cache/kcromecast/artwork"
+CONFIG = CONFIG_DIR / "service.json"
+CACHE = CACHE_DIR / "artwork"
 ACTIVE = {"PLAYING", "PAUSED", "BUFFERING"}
 
 
@@ -67,14 +68,28 @@ def finite(value, default=0.0):
         return default
 
 
+def artwork_url(images):
+    if not isinstance(images, list):
+        return ""
+    candidates = sorted((image for image in images if isinstance(image, dict)),
+                        key=lambda image: finite(image.get("width")), reverse=True)
+    for image in candidates:
+        url = image.get("url")
+        if not isinstance(url, str):
+            continue
+        try:
+            parsed = urlsplit(url)
+            if parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password:
+                return url
+        except ValueError:
+            continue
+    return ""
+
+
 def media_snapshot(status):
     """Normalize receiver data; never expose media URLs, tokens or session IDs."""
     metadata = status.media_metadata if isinstance(status.media_metadata, dict) else {}
-    raw_images = metadata.get("images")
-    images = sorted((image for image in raw_images if isinstance(image, dict)),
-                    key=lambda image: finite(image.get("width")), reverse=True) if isinstance(raw_images, list) else []
-    artwork = next((image["url"] for image in images if isinstance(image.get("url"), str)
-                    and image["url"].startswith("https://") and urlsplit(image["url"]).hostname), "")
+    artwork = artwork_url(metadata.get("images"))
     state = status.player_state
     duration = max(0, finite(status.duration))
     position = max(0, finite(status.adjusted_current_time))
@@ -120,7 +135,7 @@ class StatusListener:
 
     def new_media_status(self, status):
         if self.device():
-            self.manager.update_media(self.device_id, status)
+            self.manager.update_media(self.device_id, status, self.cast)
 
     def load_media_failed(self, queue_item_id, error_code):
         LOG.info("Receiver reported a media error: %s", error_code)
@@ -299,12 +314,12 @@ class Manager:
                 self.recovering = False
             self.changed()
 
-    def update_media(self, key, status):
+    def update_media(self, key, status, cast=None):
         snapshot = media_snapshot(status)
         url = snapshot.pop("artwork_remote")
         with self.lock:
             device = self.devices.get(key)
-            if not device:
+            if not device or (cast is not None and device.cast is not cast):
                 return
             device.media, device.updated = snapshot, time.monotonic()
             if device.artwork_remote != url:
@@ -316,7 +331,10 @@ class Manager:
 
     def protected_artwork(self):
         with self.lock:
-            return {device.artwork for device in self.devices.values() if device.artwork}
+            protected = {device.artwork for device in self.devices.values() if device.artwork}
+        if self.spotify:
+            protected.update(device["artwork"] for device in self.spotify.devices_snapshot() if device.get("artwork"))
+        return protected
 
     def artwork_ready(self, url, path):
         with self.lock:
@@ -353,17 +371,17 @@ class Manager:
         return devices
 
     def snapshot(self):
-        devices = self.all_devices()
         with self.lock:
+            devices = self.all_devices()
             if not self.selected and devices:
                 selected = next((device for device in devices if device.get("group") and device.get("state") in ACTIVE),
                                 next((device for device in devices if device.get("state") in ACTIVE), devices[0]))
                 self.selected = selected["id"]
             selected, revision, error = self.selected, self.revision, self.error
-        return {"version": __version__, "instance": self.instance, "revision": revision,
-                "sampled_at": time.monotonic(), "selected": selected,
-                "devices": devices, "sleep": self.sleep.snapshot(), "error": error,
-                "spotify": self.spotify.public_state() if self.spotify else {"connected": False}}
+            return {"version": __version__, "instance": self.instance, "revision": revision,
+                    "sampled_at": time.monotonic(), "selected": selected,
+                    "devices": devices, "sleep": self.sleep.snapshot(), "error": error,
+                    "spotify": self.spotify.public_state() if self.spotify else {"connected": False}}
 
     def select(self, key):
         if not isinstance(key, str) or not self.device_snapshot(key):
@@ -375,10 +393,14 @@ class Manager:
 
     def command(self, key, action, value=None, origin="user"):
         if action == "sleep":
-            if not self.device_snapshot(key):
-                raise ValueError("The speakers are unavailable. Check your network connection.")
             settings = value if isinstance(value, dict) else {"minutes": value}
+            cancelling = finite(settings.get("minutes"), -1) == 0
+            if not self.device_snapshot(key) and not (cancelling and self.sleep.snapshot()["device"] == key):
+                raise ValueError("The speakers are unavailable. Check your network connection.")
             self.sleep.set(key, settings.get("minutes"), settings.get("fade_seconds", 0))
+            with self.lock:
+                self.error = ""
+            self.changed()
             return
         if origin != "timer" and action in ("volume", "volume_delta", "mute"):
             self.sleep.user_volume(key)
@@ -507,7 +529,7 @@ class Handler(BaseHTTPRequestHandler):
     def authorized(self):
         expected_host = f"127.0.0.1:{self.server.server_port}"
         auth = self.headers.get("Authorization", "")
-        valid = (self.headers.get("Host") == expected_host and
+        valid = (self.headers.get("Host") == expected_host and auth.isascii() and
                  secrets.compare_digest(auth, "Bearer " + self.server.token))
         if not valid:
             self.reply(403, {"error": "Unauthorized"})
@@ -600,16 +622,20 @@ def main():
     manager.spotify = SpotifyConnect(args.config.parent, manager.changed, manager.artwork, args.port)
     server = LocalServer(("127.0.0.1", args.port), Handler)
     server.manager, server.token = manager, config["token"]
-    desktop = DesktopRuntime(manager, config["token"], args.events_port)
+    def desktop_failed():
+        threading.Thread(target=server.shutdown, daemon=True).start()
+    desktop = DesktopRuntime(manager, config["token"], args.events_port, failure_callback=desktop_failed)
     def shutdown(*_):
         threading.Thread(target=server.shutdown, daemon=True).start()
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
-    LOG.info("KCromecast %s ready on loopback", __version__)
     try:
         manager.start()
         desktop.start()
+        LOG.info("KCromecast %s ready on loopback", __version__)
         server.serve_forever(poll_interval=.3)
+        if desktop.failure:
+            raise RuntimeError("Desktop event server stopped") from desktop.failure
     finally:
         desktop.stop()
         manager.stop()

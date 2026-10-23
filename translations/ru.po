@@ -246,8 +246,8 @@ msgstr "Плавно уменьшить громкость перед паузо
 msgid "Fade duration, seconds"
 msgstr "Длительность затухания, секунды"
 
-msgid "The timer survives a service restart. During computer sleep, it runs when the computer wakes."
-msgstr "Таймер сохраняется при перезапуске службы. Во время сна компьютера сработает после пробуждения."
+msgid "The timer is saved across restarts. The computer must be awake to pause playback."
+msgstr "Таймер сохраняется при перезапуске. Для остановки музыки компьютер должен быть включён и не спать."
 
 msgid "Spotify account connected"
 msgstr "Аккаунт Spotify подключён"
@@ -311,3 +311,6 @@ msgstr "Включить таймер"
 
 msgid "Spotify API quota is exhausted. Try again later."
 msgstr "Лимит API Spotify исчерпан. Попробуйте позже."
+
+msgid "Sleep timer expired while the computer or speakers were unavailable."
+msgstr "Таймер истёк, пока компьютер или колонки были недоступны."

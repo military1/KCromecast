@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kcromecast"
-version = "1.1.0"
-description = "A native Plasma 6 remote for existing Google Cast sessions"
+version = "1.1.1"
+description = "Chromecast remote for KDE Plasma 6"
 requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 dependencies = [
@@ -16,6 +16,10 @@ dependencies = [
 
 [project.scripts]
 kcromecast-service = "kcromecast.service:main"
+
+[project.urls]
+Homepage = "https://github.com/military1/KCromecast"
+Issues = "https://github.com/military1/KCromecast/issues"
 
 [tool.setuptools.packages.find]
 where = ["backend"]

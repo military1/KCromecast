@@ -410,7 +410,7 @@ Item {
             QQC.SpinBox { id: fadeSeconds; from: 5; to: 300; value: 30; editable: true; visible: fade.checked; Layout.fillWidth: true }
             PC.Label {
                 Layout.fillWidth: true
-                text: L10n.tr(Qt.locale(), "The timer survives a service restart. During computer sleep, it runs when the computer wakes.")
+                text: L10n.tr(Qt.locale(), "The timer is saved across restarts. The computer must be awake to pause playback.")
                 wrapMode: Text.WordWrap
                 font.pixelSize: 11
             }

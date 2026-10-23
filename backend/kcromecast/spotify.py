@@ -2,10 +2,11 @@
 import base64
 import hashlib
 import math
+from pathlib import Path
 import secrets
 import threading
 import time
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote, urlsplit
 
 import requests
 
@@ -21,7 +22,6 @@ class SpotifyConnect:
         self.lock = threading.RLock()
         self.api_lock = threading.RLock()
         self.http = requests.Session()
-        self.condition = threading.Condition()
         self.wake_event = threading.Event()
         self.credentials = read_json(self.path)
         self.pending = None
@@ -125,7 +125,10 @@ class SpotifyConnect:
         if response.status_code in (400, 401):
             with self.lock:
                 self.credentials = {"client_id": credentials["client_id"]}
+                self.devices, self.playback = [], {}
+                self.error = "Spotify sign-in expired. Try again."
                 write_json(self.path, self.credentials)
+            self.changed()
             raise ValueError("Spotify sign-in expired. Try again.")
         response.raise_for_status()
         self._save_tokens(response.json())
@@ -166,7 +169,15 @@ class SpotifyConnect:
                     raise ValueError("Open Spotify on the target device first.")
                 if response.status_code >= 400:
                     raise ValueError("Spotify did not respond. Try again.")
-                return response.json() if response.status_code != 204 and response.content else {}
+                if response.status_code == 204 or not response.content:
+                    return {}
+                try:
+                    data = response.json()
+                except ValueError:
+                    raise ValueError("Spotify did not respond. Try again.") from None
+                if not isinstance(data, dict):
+                    raise ValueError("Spotify did not respond. Try again.")
+                return data
         raise ValueError("Spotify sign-in expired. Try again.")
 
     def refresh(self):
@@ -180,7 +191,9 @@ class SpotifyConnect:
             with self.lock:
                 self.devices, self.playback = devices, playback
                 self.sampled_at, self.error = time.monotonic(), ""
-            if url:
+            with self.lock:
+                cached = self.artwork_files.get(url)
+            if url and (not cached or not Path(unquote(urlsplit(cached).path)).is_file()):
                 self.artwork.request(url)
         self.changed()
 

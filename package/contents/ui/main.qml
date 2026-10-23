@@ -1,4 +1,5 @@
 import "Locale.js" as L10n
+import "SnapshotOrder.js" as SnapshotOrder
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -17,12 +18,10 @@ PlasmoidItem {
     property bool closing: false
     property bool selectionSynced: false
     property bool hadConnection: false
-    property string backendInstance: ""
-    property int backendRevision: -1
+    property var snapshotOrder: SnapshotOrder.create()
     property real sampledAt: 0
     property real displayClock: Date.now()
     property var spotify: ({connected: false, client_id: "", error: ""})
-    property real lastSample: 0
     property string errorText: ""
     readonly property bool busy: commandRunning
     readonly property string selectedId: Plasmoid.configuration.preferredDevice
@@ -57,11 +56,7 @@ PlasmoidItem {
     }
 
     function applySnapshot(data) {
-        if (data.instance === root.backendInstance && ((data.revision || 0) < root.backendRevision
-            || ((data.revision || 0) === root.backendRevision && (data.sampled_at || 0) < root.lastSample))) return;
-        root.backendInstance = data.instance || "";
-        root.backendRevision = data.revision || 0;
-        root.lastSample = data.sampled_at || 0;
+        if (!SnapshotOrder.accept(root.snapshotOrder, data)) return;
         root.sampledAt = Date.now();
         root.displayClock = root.sampledAt;
         root.hadConnection = true;

@@ -3,15 +3,23 @@
   "KPlugin": {
     "Id": "org.kcromecast.widget",
     "Name": "KCromecast",
-    "Description": "A glass-inspired remote for your Chromecast speakers",
-    "Description[ru]": "Музыка на колонках. Управление в панели.",
+    "Description": "Chromecast remote for KDE Plasma",
+    "Description[ru]": "Пульт Chromecast для KDE Plasma",
     "Category": "Multimedia",
     "Icon": "/icons/kcromecast.svg",
-    "Version": "1.1.0",
+    "Version": "1.1.1",
     "License": "GPL-3.0-or-later",
-    "Authors": [{"Name": "KCromecast contributors"}],
-    "Copyright": "2026 KCromecast contributors; based on the KCast concept by Alec / Agundur"
+    "Authors": [
+      {
+        "Name": "military1",
+        "Website": "https://github.com/military1"
+      }
+    ],
+    "Copyright": "2026 military1 and contributors; inspired by KCast by Alec / Agundur",
+    "Website": "https://github.com/military1/KCromecast"
   },
   "X-Plasma-API-Minimum-Version": "6.0",
-  "X-Plasma-Provides": ["org.kde.plasma.multimediacontrols"]
+  "X-Plasma-Provides": [
+    "org.kde.plasma.multimediacontrols"
+  ]
 }
