@@ -1,0 +1,10 @@
+casttube==0.2.1
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+ifaddr==0.2.0
+protobuf==7.36.2
+PyChromecast==14.0.10
+requests==2.34.2
+urllib3==2.8.0
+zeroconf==0.151.5

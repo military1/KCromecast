@@ -1,0 +1,17 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Id": "org.kcromecast.widget",
+    "Name": "KCromecast",
+    "Description": "A glass-inspired remote for your Chromecast speakers",
+    "Description[ru]": "Музыка на колонках. Управление в панели.",
+    "Category": "Multimedia",
+    "Icon": "/icons/kcromecast.svg",
+    "Version": "1.0.0",
+    "License": "GPL-3.0-or-later",
+    "Authors": [{"Name": "KCromecast contributors"}],
+    "Copyright": "2026 KCromecast contributors; based on the KCast concept by Alec / Agundur"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0",
+  "X-Plasma-Provides": ["org.kde.plasma.multimediacontrols"]
+}

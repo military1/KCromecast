@@ -1,0 +1,166 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: KCromecast 1.0\n"
+"PO-Revision-Date: 2026-10-23 18:00+0300\n"
+"Last-Translator: KCromecast contributors\n"
+"Language-Team: Russian\n"
+"MIME-Version: 1.0\n"
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Appearance"
+msgstr "Внешний вид"
+
+
+msgid "Surface opacity:"
+msgstr "Плотность стекла:"
+
+
+msgid "Reduce animations"
+msgstr "Уменьшить анимацию"
+
+
+msgid "Colours and fonts follow your Plasma theme. Background blur follows your desktop's transparency settings."
+msgstr "Цвета и шрифты следуют теме Plasma. Размытие фона зависит от настроек прозрачности рабочего стола."
+
+
+msgid "Music on your speakers. Control from here."
+msgstr "Музыка на колонках. Управление здесь."
+
+
+msgid "The speakers did not respond. Try again."
+msgstr "Колонки не ответили. Попробуйте ещё раз."
+
+
+msgid "Refresh"
+msgstr "Обновить"
+
+
+msgid "More controls"
+msgstr "Дополнительно"
+
+
+msgid "Choose speakers"
+msgstr "Выбрать колонки"
+
+
+msgid "Ready to play"
+msgstr "Готовы к воспроизведению"
+
+
+msgid "Waiting for speakers"
+msgstr "Ожидание колонок"
+
+
+msgid "Connecting…"
+msgstr "Подключение…"
+
+
+msgid "Playing on your speakers"
+msgstr "Играет на колонках"
+
+
+msgid "Connecting to your music"
+msgstr "Подключаемся к музыке"
+
+
+msgid "Start with your phone"
+msgstr "Начните с телефона"
+
+
+msgid "Cast music to these speakers, then control it here."
+msgstr "Включите музыку на этих колонках через Cast, затем управляйте здесь."
+
+
+msgid "Playback position"
+msgstr "Позиция воспроизведения"
+
+
+msgid "Previous track"
+msgstr "Предыдущий трек"
+
+
+msgid "Next track"
+msgstr "Следующий трек"
+
+
+msgid "Pause"
+msgstr "Пауза"
+
+
+msgid "Play"
+msgstr "Продолжить"
+
+
+msgid "Mute"
+msgstr "Выключить звук"
+
+
+msgid "Unmute"
+msgstr "Включить звук"
+
+
+msgid "Volume"
+msgstr "Громкость"
+
+
+msgid "Sleep in %1"
+msgstr "Пауза через %1"
+
+
+msgid "Middle-click: pause · Scroll: volume"
+msgstr "Средняя кнопка — пауза · Колесо — громкость"
+
+
+msgid "Back"
+msgstr "Назад"
+
+
+msgid "Your speakers"
+msgstr "Ваши колонки"
+
+
+msgid "Choose where to control playback"
+msgstr "Выберите устройство для управления музыкой"
+
+
+msgid "Offline"
+msgstr "Не в сети"
+
+
+msgid "Looking for Chromecast speakers on your network…"
+msgstr "Ищем колонки Chromecast в вашей сети…"
+
+
+msgid "Speaker groups are managed in Google Home."
+msgstr "Группы колонок настраиваются в Google Home."
+
+
+msgid "Sleep timer"
+msgstr "Таймер сна"
+
+
+msgid "15 minutes"
+msgstr "15 минут"
+
+
+msgid "30 minutes"
+msgstr "30 минут"
+
+
+msgid "45 minutes"
+msgstr "45 минут"
+
+
+msgid "1 hour"
+msgstr "1 час"
+
+
+msgid "Cancel timer"
+msgstr "Отменить таймер"
+
+
+msgid "Stop casting"
+msgstr "Остановить воспроизведение"

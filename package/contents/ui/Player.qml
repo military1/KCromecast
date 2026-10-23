@@ -1,0 +1,357 @@
+import QtQuick
+import QtQuick.Controls as QQC
+import QtQuick.Layouts
+import QtQuick.Effects
+import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PC
+import org.kde.plasma.plasmoid
+
+Item {
+    id: player
+    required property var controller
+    property bool choosingDevice: false
+    readonly property var device: controller.device
+    readonly property color ink: Kirigami.Theme.textColor
+    readonly property color secondaryInk: Qt.rgba(ink.r, ink.g, ink.b, 0.6)
+    implicitWidth: 352
+    implicitHeight: controller.errorText || controller.sleepRemaining > 0 ? 400 : 372
+    Layout.minimumWidth: 332
+    Layout.minimumHeight: implicitHeight
+    Layout.preferredWidth: 352
+    Layout.preferredHeight: implicitHeight
+    focus: true
+
+    Keys.onSpacePressed: if (controller.active) controller.send("toggle")
+    Keys.onRightPressed: if (device.can_next) controller.send("next")
+    Keys.onLeftPressed: if (device.can_previous) controller.send("previous")
+    Keys.onEscapePressed: choosingDevice = false
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: 4
+        radius: 18
+        color: Qt.rgba(Kirigami.Theme.backgroundColor.r, Kirigami.Theme.backgroundColor.g,
+                       Kirigami.Theme.backgroundColor.b, Plasmoid.configuration.glassOpacity)
+        border.color: Qt.rgba(1, 1, 1, 0.12)
+        border.width: 1
+    }
+    Image {
+        id: glowSource
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width * 0.6
+        height: width
+        source: device.artwork || ""
+        fillMode: Image.PreserveAspectCrop
+        visible: false
+        asynchronous: true
+    }
+    MultiEffect {
+        anchors.fill: glowSource
+        source: glowSource
+        blurEnabled: true
+        blurMax: 64
+        blur: 1
+        saturation: 0.15
+        opacity: 0.13
+        visible: !player.choosingDevice && glowSource.status === Image.Ready
+    }
+    Rectangle {
+        anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+        anchors.margins: 5
+        height: parent.height * 0.26
+        radius: 17
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(1, 1, 1, 0.065) }
+            GradientStop { position: 1; color: "transparent" }
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 16
+        spacing: 8
+        visible: !player.choosingDevice
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Image { source: Qt.resolvedUrl("../icons/kcromecast.svg"); Layout.preferredWidth: 20; Layout.preferredHeight: 20 }
+            PC.Label {
+                text: "KCromecast"
+                font.weight: Font.DemiBold
+                font.pixelSize: 13
+                Layout.fillWidth: true
+            }
+            GlassButton {
+                glyph: "view-refresh"
+                hint: i18n("Refresh")
+                quiet: true
+                implicitWidth: 28
+                onClicked: controller.refresh()
+                visible: !controller.online
+            }
+            GlassButton {
+                id: moreButton
+                glyph: "view-more-symbolic"
+                hint: i18n("More controls")
+                quiet: true
+                implicitWidth: 28
+                onClicked: moreMenu.popup()
+            }
+        }
+
+        QQC.AbstractButton {
+            id: outputButton
+            Layout.fillWidth: true
+            implicitHeight: 42
+            hoverEnabled: true
+            onClicked: player.choosingDevice = true
+            Accessible.name: i18n("Choose speakers")
+            background: Rectangle {
+                radius: 12
+                color: Qt.rgba(1, 1, 1, outputButton.hovered ? 0.1 : 0.045)
+                border.color: Qt.rgba(1, 1, 1, 0.09)
+            }
+            contentItem: RowLayout {
+                spacing: 10
+                Kirigami.Icon { source: device.group ? "audio-speakers-symbolic" : "network-wireless-symbolic"; Layout.preferredWidth: 18; Layout.preferredHeight: 18 }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    PC.Label { text: device.name || i18n("Choose speakers"); font.pixelSize: 12; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
+                    RowLayout {
+                        spacing: 4
+                        Image {
+                            visible: device.service === "spotify"
+                            source: Qt.resolvedUrl("../icons/spotify.svg")
+                            Layout.preferredWidth: 10; Layout.preferredHeight: 10
+                        }
+                        PC.Label { text: controller.available ? (device.app || i18n("Ready to play")) : controller.online ? i18n("Waiting for speakers") : i18n("Connecting…"); color: player.secondaryInk; font.pixelSize: 10 }
+                    }
+                }
+                Rectangle { width: 6; height: 6; radius: 3; color: controller.available ? "#78d9b0" : player.secondaryInk }
+                Kirigami.Icon { source: "arrow-down"; Layout.preferredWidth: 14; Layout.preferredHeight: 14; color: player.secondaryInk }
+            }
+            leftPadding: 14
+            rightPadding: 14
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 88
+            spacing: 14
+            Artwork {
+                Layout.preferredWidth: 88
+                Layout.preferredHeight: 88
+                cornerRadius: 15
+                source: controller.active ? device.artwork || "" : ""
+                scale: controller.active && device.state === "PAUSED" && !controller.reducedMotion ? 0.96 : 1
+                Behavior on scale { NumberAnimation { duration: controller.reducedMotion ? 0 : 180; easing.type: Easing.OutCubic } }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 5
+                PC.Label {
+                    Layout.fillWidth: true
+                    text: controller.active ? device.title || i18n("Playing on your speakers")
+                        : !controller.online ? i18n("Connecting to your music") : i18n("Start with your phone")
+                    font.pixelSize: 16
+                    font.weight: Font.DemiBold
+                    maximumLineCount: 2
+                    wrapMode: Text.Wrap
+                    elide: Text.ElideRight
+                }
+                PC.Label {
+                    Layout.fillWidth: true
+                    text: controller.active ? device.artist || device.app || ""
+                        : i18n("Cast music to these speakers, then control it here.")
+                    color: player.secondaryInk
+                    font.pixelSize: 11
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: controller.active ? 1 : 2
+                    elide: Text.ElideRight
+                }
+                PC.Label {
+                    Layout.fillWidth: true
+                    visible: controller.active && !!device.album && device.album !== device.title
+                    text: device.album || ""
+                    font.pixelSize: 10
+                    color: player.secondaryInk
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: -4
+            QQC.Slider {
+                id: seek
+                Layout.fillWidth: true
+                from: 0
+                to: Math.max(1, device.duration || 0)
+                property real pendingValue: 0
+                enabled: controller.active && !!device.can_seek && !controller.busy
+                onMoved: { pendingValue = value; if (!pressed) seekCommit.restart(); }
+                onPressedChanged: if (!pressed && enabled) { seekCommit.stop(); controller.send("seek", pendingValue); }
+                Accessible.name: i18n("Playback position")
+                Binding { target: seek; property: "value"; when: !seek.pressed && !seekCommit.running; value: player.device.position || 0 }
+                Timer { id: seekCommit; interval: 350; onTriggered: if (!seek.pressed) controller.send("seek", seek.pendingValue) }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                PC.Label { text: controller.formatTime(seek.pressed ? seek.value : device.position); color: player.secondaryInk; font.pixelSize: 10; font.family: "monospace" }
+                Item { Layout.fillWidth: true }
+                PC.Label { text: device.duration ? controller.formatTime(device.duration) : "—:—"; color: player.secondaryInk; font.pixelSize: 10; font.family: "monospace" }
+            }
+        }
+
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 20
+            GlassButton {
+                glyph: "media-skip-backward"
+                hint: i18n("Previous track")
+                quiet: true
+                enabled: controller.active && !!device.can_previous && !controller.busy
+                onClicked: controller.send("previous")
+            }
+            GlassButton {
+                prominent: true
+                implicitWidth: 52
+                padding: 14
+                glyph: controller.playing ? "media-playback-pause" : "media-playback-start"
+                hint: controller.playing ? i18n("Pause") : i18n("Play")
+                enabled: controller.active && (device.state === "PAUSED" || !!device.can_pause) && !controller.busy
+                onClicked: controller.send("toggle")
+            }
+            GlassButton {
+                glyph: "media-skip-forward"
+                hint: i18n("Next track")
+                quiet: true
+                enabled: controller.active && !!device.can_next && !controller.busy
+                onClicked: controller.send("next")
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            GlassButton {
+                implicitWidth: 28
+                quiet: true
+                glyph: device.muted ? "audio-volume-muted" : device.volume > 65 ? "audio-volume-high" : "audio-volume-low"
+                hint: device.muted ? i18n("Unmute") : i18n("Mute")
+                enabled: controller.available
+                onClicked: controller.send("mute")
+            }
+            QQC.Slider {
+                id: volume
+                Layout.fillWidth: true
+                from: 0; to: 100
+                property real pendingValue: 0
+                enabled: controller.available
+                Accessible.name: i18n("Volume")
+                onMoved: { pendingValue = value; if (!pressed) volumeCommit.restart(); }
+                onPressedChanged: if (!pressed && enabled) { volumeCommit.stop(); controller.send("volume", Math.round(pendingValue)); }
+                Keys.onLeftPressed: { value = Math.max(0, value - 1); pendingValue = value; volumeCommit.restart(); }
+                Keys.onRightPressed: { value = Math.min(100, value + 1); pendingValue = value; volumeCommit.restart(); }
+                Binding { target: volume; property: "value"; when: !volume.pressed && !volumeCommit.running; value: player.device.volume || 0 }
+                Timer { id: volumeCommit; interval: 180; onTriggered: controller.send("volume", Math.round(volume.pendingValue)) }
+            }
+            PC.Label {
+                Layout.preferredWidth: 30
+                horizontalAlignment: Text.AlignRight
+                text: Math.round(volume.pressed ? volume.value : device.volume || 0) + "%"
+                font.pixelSize: 11
+                color: player.secondaryInk
+            }
+        }
+
+        PC.Label {
+            Layout.fillWidth: true
+            visible: controller.errorText.length > 0 || controller.sleepRemaining > 0
+            text: controller.errorText || (controller.sleepRemaining > 0
+                ? i18n("Sleep in %1", controller.formatTime(controller.sleepRemaining))
+                : i18n("Middle-click: pause · Scroll: volume"))
+            color: controller.errorText ? Kirigami.Theme.negativeTextColor
+                : controller.sleepRemaining > 0 ? Kirigami.Theme.highlightColor : player.secondaryInk
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 16
+        spacing: 10
+        visible: player.choosingDevice
+        RowLayout {
+            GlassButton { glyph: "go-previous"; hint: i18n("Back"); quiet: true; onClicked: player.choosingDevice = false }
+            PC.Label { text: i18n("Your speakers"); font.pixelSize: 16; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            GlassButton { glyph: "view-refresh"; hint: i18n("Refresh"); quiet: true; onClicked: controller.refresh() }
+        }
+        PC.Label { text: i18n("Choose where to control playback"); color: player.secondaryInk; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+        QQC.ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: parent.width
+                spacing: 10
+                Repeater {
+                    model: controller.devices
+                    delegate: QQC.AbstractButton {
+                        id: deviceCard
+                        required property var modelData
+                        Layout.fillWidth: true
+                        implicitHeight: 68
+                        hoverEnabled: true
+                        readonly property bool selected: modelData.id === controller.selectedId
+                        onClicked: { controller.selectDevice(modelData.id); player.choosingDevice = false; }
+                        background: Rectangle {
+                            radius: 14
+                            color: deviceCard.selected ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.12)
+                                : Qt.rgba(1, 1, 1, deviceCard.hovered ? 0.09 : 0.04)
+                            border.color: deviceCard.selected ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.55) : Qt.rgba(1, 1, 1, 0.09)
+                        }
+                        contentItem: RowLayout {
+                            spacing: 10
+                            Kirigami.Icon { source: deviceCard.modelData.group ? "audio-speakers-symbolic" : "audio-speakers"; Layout.preferredWidth: 22; Layout.preferredHeight: 22; color: deviceCard.selected ? Kirigami.Theme.highlightColor : player.ink }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 5
+                                PC.Label { text: deviceCard.modelData.name; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                PC.Label { text: !deviceCard.modelData.connected ? i18n("Offline") : deviceCard.modelData.state === "IDLE" ? i18n("Ready to play") : deviceCard.modelData.title || deviceCard.modelData.app; color: player.secondaryInk; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                            }
+                            Kirigami.Icon { source: "checkmark"; visible: deviceCard.selected; Layout.preferredWidth: 18; Layout.preferredHeight: 18; color: Kirigami.Theme.highlightColor }
+                        }
+                        padding: 12
+                    }
+                }
+                PC.Label { visible: !controller.devices.length; text: i18n("Looking for Chromecast speakers on your network…"); wrapMode: Text.WordWrap; Layout.fillWidth: true; color: player.secondaryInk }
+            }
+        }
+        PC.Label { text: i18n("Speaker groups are managed in Google Home."); color: player.secondaryInk; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+    }
+
+    QQC.Menu {
+        id: moreMenu
+        parent: moreButton
+        y: moreButton.height
+        QQC.Menu {
+            title: i18n("Sleep timer")
+            enabled: controller.available
+            QQC.MenuItem { text: i18n("15 minutes"); onTriggered: controller.send("sleep", 15) }
+            QQC.MenuItem { text: i18n("30 minutes"); onTriggered: controller.send("sleep", 30) }
+            QQC.MenuItem { text: i18n("45 minutes"); onTriggered: controller.send("sleep", 45) }
+            QQC.MenuItem { text: i18n("1 hour"); onTriggered: controller.send("sleep", 60) }
+            QQC.MenuSeparator {}
+            QQC.MenuItem { text: i18n("Cancel timer"); enabled: controller.sleepRemaining > 0; onTriggered: controller.send("sleep", 0) }
+        }
+        QQC.MenuSeparator {}
+        QQC.MenuItem { text: i18n("Stop casting"); icon.name: "media-playback-stop"; enabled: controller.active; onTriggered: controller.send("stop") }
+    }
+}
