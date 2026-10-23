@@ -1,3 +1,4 @@
+import "Locale.js" as L10n
 import QtQuick
 import QtQuick.Controls as QQC
 import QtQuick.Layouts
@@ -14,7 +15,7 @@ Item {
     readonly property color ink: Kirigami.Theme.textColor
     readonly property color secondaryInk: Qt.rgba(ink.r, ink.g, ink.b, 0.6)
     implicitWidth: 352
-    implicitHeight: controller.errorText || controller.sleepRemaining > 0 ? 400 : 372
+    implicitHeight: controller.errorText || controller.sleepRemaining > 0 ? 420 : 392
     Layout.minimumWidth: 332
     Layout.minimumHeight: implicitHeight
     Layout.preferredWidth: 352
@@ -85,7 +86,7 @@ Item {
             }
             GlassButton {
                 glyph: "view-refresh"
-                hint: i18n("Refresh")
+                hint: L10n.tr(Qt.locale(), "Refresh")
                 quiet: true
                 implicitWidth: 28
                 onClicked: controller.refresh()
@@ -94,7 +95,7 @@ Item {
             GlassButton {
                 id: moreButton
                 glyph: "view-more-symbolic"
-                hint: i18n("More controls")
+                hint: L10n.tr(Qt.locale(), "More controls")
                 quiet: true
                 implicitWidth: 28
                 onClicked: moreMenu.popup()
@@ -107,7 +108,7 @@ Item {
             implicitHeight: 42
             hoverEnabled: true
             onClicked: player.choosingDevice = true
-            Accessible.name: i18n("Choose speakers")
+            Accessible.name: L10n.tr(Qt.locale(), "Choose speakers")
             background: Rectangle {
                 radius: 12
                 color: Qt.rgba(1, 1, 1, outputButton.hovered ? 0.1 : 0.045)
@@ -119,7 +120,7 @@ Item {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 1
-                    PC.Label { text: device.name || i18n("Choose speakers"); font.pixelSize: 12; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
+                    PC.Label { text: device.name || L10n.tr(Qt.locale(), "Choose speakers"); font.pixelSize: 12; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
                     RowLayout {
                         spacing: 4
                         Image {
@@ -127,7 +128,7 @@ Item {
                             source: Qt.resolvedUrl("../icons/spotify.svg")
                             Layout.preferredWidth: 10; Layout.preferredHeight: 10
                         }
-                        PC.Label { text: controller.available ? (device.app || i18n("Ready to play")) : controller.online ? i18n("Waiting for speakers") : i18n("Connecting…"); color: player.secondaryInk; font.pixelSize: 10 }
+                        PC.Label { text: controller.available ? (device.app || L10n.tr(Qt.locale(), "Ready to play")) : controller.online ? L10n.tr(Qt.locale(), "Waiting for speakers") : L10n.tr(Qt.locale(), "Connecting…"); color: player.secondaryInk; font.pixelSize: 10 }
                     }
                 }
                 Rectangle { width: 6; height: 6; radius: 3; color: controller.available ? "#78d9b0" : player.secondaryInk }
@@ -152,33 +153,28 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 5
-                PC.Label {
+                SelectableText {
                     Layout.fillWidth: true
-                    text: controller.active ? device.title || i18n("Playing on your speakers")
-                        : !controller.online ? i18n("Connecting to your music") : i18n("Start with your phone")
+                    text: controller.active ? device.title || L10n.tr(Qt.locale(), "Playing on your speakers")
+                        : !controller.online ? L10n.tr(Qt.locale(), "Connecting to your music") : L10n.tr(Qt.locale(), "Start with your phone")
                     font.pixelSize: 16
                     font.weight: Font.DemiBold
-                    maximumLineCount: 2
-                    wrapMode: Text.Wrap
-                    elide: Text.ElideRight
+                    maximumLines: 2
                 }
-                PC.Label {
+                SelectableText {
                     Layout.fillWidth: true
                     text: controller.active ? device.artist || device.app || ""
-                        : i18n("Cast music to these speakers, then control it here.")
+                        : L10n.tr(Qt.locale(), "Cast music to these speakers, then control it here.")
                     color: player.secondaryInk
                     font.pixelSize: 11
-                    wrapMode: Text.WordWrap
-                    maximumLineCount: controller.active ? 1 : 2
-                    elide: Text.ElideRight
+                    maximumLines: controller.active ? 1 : 2
                 }
-                PC.Label {
+                SelectableText {
                     Layout.fillWidth: true
                     visible: controller.active && !!device.album && device.album !== device.title
                     text: device.album || ""
                     font.pixelSize: 10
                     color: player.secondaryInk
-                    elide: Text.ElideRight
                 }
             }
         }
@@ -195,7 +191,7 @@ Item {
                 enabled: controller.active && !!device.can_seek && !controller.busy
                 onMoved: { pendingValue = value; if (!pressed) seekCommit.restart(); }
                 onPressedChanged: if (!pressed && enabled) { seekCommit.stop(); controller.send("seek", pendingValue); }
-                Accessible.name: i18n("Playback position")
+                Accessible.name: L10n.tr(Qt.locale(), "Playback position")
                 Binding { target: seek; property: "value"; when: !seek.pressed && !seekCommit.running; value: player.device.position || 0 }
                 Timer { id: seekCommit; interval: 350; onTriggered: if (!seek.pressed) controller.send("seek", seek.pendingValue) }
             }
@@ -212,7 +208,7 @@ Item {
             spacing: 20
             GlassButton {
                 glyph: "media-skip-backward"
-                hint: i18n("Previous track")
+                hint: L10n.tr(Qt.locale(), "Previous track")
                 quiet: true
                 enabled: controller.active && !!device.can_previous && !controller.busy
                 onClicked: controller.send("previous")
@@ -222,13 +218,13 @@ Item {
                 implicitWidth: 52
                 padding: 14
                 glyph: controller.playing ? "media-playback-pause" : "media-playback-start"
-                hint: controller.playing ? i18n("Pause") : i18n("Play")
+                hint: controller.playing ? L10n.tr(Qt.locale(), "Pause") : L10n.tr(Qt.locale(), "Play")
                 enabled: controller.active && (device.state === "PAUSED" || !!device.can_pause) && !controller.busy
                 onClicked: controller.send("toggle")
             }
             GlassButton {
                 glyph: "media-skip-forward"
-                hint: i18n("Next track")
+                hint: L10n.tr(Qt.locale(), "Next track")
                 quiet: true
                 enabled: controller.active && !!device.can_next && !controller.busy
                 onClicked: controller.send("next")
@@ -242,7 +238,7 @@ Item {
                 implicitWidth: 28
                 quiet: true
                 glyph: device.muted ? "audio-volume-muted" : device.volume > 65 ? "audio-volume-high" : "audio-volume-low"
-                hint: device.muted ? i18n("Unmute") : i18n("Mute")
+                hint: device.muted ? L10n.tr(Qt.locale(), "Unmute") : L10n.tr(Qt.locale(), "Mute")
                 enabled: controller.available
                 onClicked: controller.send("mute")
             }
@@ -252,7 +248,7 @@ Item {
                 from: 0; to: 100
                 property real pendingValue: 0
                 enabled: controller.available
-                Accessible.name: i18n("Volume")
+                Accessible.name: L10n.tr(Qt.locale(), "Volume")
                 onMoved: { pendingValue = value; if (!pressed) volumeCommit.restart(); }
                 onPressedChanged: if (!pressed && enabled) { volumeCommit.stop(); controller.send("volume", Math.round(pendingValue)); }
                 Keys.onLeftPressed: { value = Math.max(0, value - 1); pendingValue = value; volumeCommit.restart(); }
@@ -272,11 +268,16 @@ Item {
         PC.Label {
             Layout.fillWidth: true
             visible: controller.errorText.length > 0 || controller.sleepRemaining > 0
-            text: controller.errorText || (controller.sleepRemaining > 0
-                ? i18n("Sleep in %1", controller.formatTime(controller.sleepRemaining))
-                : i18n("Middle-click: pause · Scroll: volume"))
-            color: controller.errorText ? Kirigami.Theme.negativeTextColor
-                : controller.sleepRemaining > 0 ? Kirigami.Theme.highlightColor : player.secondaryInk
+            text: controller.errorText || L10n.tr(Qt.locale(), "Sleep in %1", controller.formatTime(controller.sleepRemaining))
+            color: controller.errorText ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.highlightColor
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+        }
+        PC.Label {
+            Layout.fillWidth: true
+            text: L10n.tr(Qt.locale(), "Middle-click: pause · Scroll: volume")
+            color: player.secondaryInk
             font.pixelSize: 10
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
@@ -289,11 +290,11 @@ Item {
         spacing: 10
         visible: player.choosingDevice
         RowLayout {
-            GlassButton { glyph: "go-previous"; hint: i18n("Back"); quiet: true; onClicked: player.choosingDevice = false }
-            PC.Label { text: i18n("Your speakers"); font.pixelSize: 16; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            GlassButton { glyph: "view-refresh"; hint: i18n("Refresh"); quiet: true; onClicked: controller.refresh() }
+            GlassButton { glyph: "go-previous"; hint: L10n.tr(Qt.locale(), "Back"); quiet: true; onClicked: player.choosingDevice = false }
+            PC.Label { text: L10n.tr(Qt.locale(), "Your speakers"); font.pixelSize: 16; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            GlassButton { glyph: "view-refresh"; hint: L10n.tr(Qt.locale(), "Refresh"); quiet: true; onClicked: controller.refresh() }
         }
-        PC.Label { text: i18n("Choose where to control playback"); color: player.secondaryInk; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+        PC.Label { text: L10n.tr(Qt.locale(), "Choose where to control playback"); color: player.secondaryInk; Layout.fillWidth: true; wrapMode: Text.WordWrap }
         QQC.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -324,17 +325,17 @@ Item {
                                 Layout.fillWidth: true
                                 spacing: 5
                                 PC.Label { text: deviceCard.modelData.name; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                                PC.Label { text: !deviceCard.modelData.connected ? i18n("Offline") : deviceCard.modelData.state === "IDLE" ? i18n("Ready to play") : deviceCard.modelData.title || deviceCard.modelData.app; color: player.secondaryInk; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                                PC.Label { text: !deviceCard.modelData.connected ? L10n.tr(Qt.locale(), "Offline") : deviceCard.modelData.state === "IDLE" ? L10n.tr(Qt.locale(), "Ready to play") : deviceCard.modelData.title || deviceCard.modelData.app; color: player.secondaryInk; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
                             }
                             Kirigami.Icon { source: "checkmark"; visible: deviceCard.selected; Layout.preferredWidth: 18; Layout.preferredHeight: 18; color: Kirigami.Theme.highlightColor }
                         }
                         padding: 12
                     }
                 }
-                PC.Label { visible: !controller.devices.length; text: i18n("Looking for Chromecast speakers on your network…"); wrapMode: Text.WordWrap; Layout.fillWidth: true; color: player.secondaryInk }
+                PC.Label { visible: !controller.devices.length; text: L10n.tr(Qt.locale(), "Looking for Chromecast speakers on your network…"); wrapMode: Text.WordWrap; Layout.fillWidth: true; color: player.secondaryInk }
             }
         }
-        PC.Label { text: i18n("Speaker groups are managed in Google Home."); color: player.secondaryInk; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
+        PC.Label { text: L10n.tr(Qt.locale(), "Speaker groups are managed in Google Home."); color: player.secondaryInk; font.pixelSize: 11; Layout.fillWidth: true; wrapMode: Text.WordWrap }
     }
 
     QQC.Menu {
@@ -342,16 +343,16 @@ Item {
         parent: moreButton
         y: moreButton.height
         QQC.Menu {
-            title: i18n("Sleep timer")
+            title: L10n.tr(Qt.locale(), "Sleep timer")
             enabled: controller.available
-            QQC.MenuItem { text: i18n("15 minutes"); onTriggered: controller.send("sleep", 15) }
-            QQC.MenuItem { text: i18n("30 minutes"); onTriggered: controller.send("sleep", 30) }
-            QQC.MenuItem { text: i18n("45 minutes"); onTriggered: controller.send("sleep", 45) }
-            QQC.MenuItem { text: i18n("1 hour"); onTriggered: controller.send("sleep", 60) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "15 minutes"); onTriggered: controller.send("sleep", 15) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "30 minutes"); onTriggered: controller.send("sleep", 30) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "45 minutes"); onTriggered: controller.send("sleep", 45) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "1 hour"); onTriggered: controller.send("sleep", 60) }
             QQC.MenuSeparator {}
-            QQC.MenuItem { text: i18n("Cancel timer"); enabled: controller.sleepRemaining > 0; onTriggered: controller.send("sleep", 0) }
+            QQC.MenuItem { text: L10n.tr(Qt.locale(), "Cancel timer"); enabled: controller.sleepRemaining > 0; onTriggered: controller.send("sleep", 0) }
         }
         QQC.MenuSeparator {}
-        QQC.MenuItem { text: i18n("Stop casting"); icon.name: "media-playback-stop"; enabled: controller.active; onTriggered: controller.send("stop") }
+        QQC.MenuItem { text: L10n.tr(Qt.locale(), "Stop casting"); icon.name: "media-playback-stop"; enabled: controller.active; onTriggered: controller.send("stop") }
     }
 }

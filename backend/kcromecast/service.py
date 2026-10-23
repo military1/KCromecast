@@ -265,11 +265,11 @@ class Manager:
         with self.lock:
             device = self.devices.get(key)
             if not device or not device.connected:
-                raise ValueError("Колонки недоступны. Проверьте подключение к сети.")
+                raise ValueError("The speakers are unavailable. Check your network connection.")
         if action == "sleep":
             minutes = finite(value, -1)
             if minutes not in (0, 15, 30, 45, 60, 90):
-                raise ValueError("Недопустимый таймер")
+                raise ValueError("Invalid sleep timer")
             with self.lock:
                 self.sleep_device = key if minutes else ""
                 self.sleep_deadline = time.monotonic() + minutes * 60 if minutes else 0
@@ -281,24 +281,24 @@ class Manager:
             state = media_snapshot(media.status)
             if action in ("toggle", "play", "pause"):
                 if state["state"] not in ACTIVE:
-                    raise ValueError("Сначала запустите музыку на телефоне.")
+                    raise ValueError("Start music on your phone first.")
                 pause = action == "pause" or (action == "toggle" and state["state"] in ("PLAYING", "BUFFERING"))
                 if pause:
                     if not state["can_pause"]:
-                        raise ValueError("Сервис не поддерживает паузу.")
+                        raise ValueError("This service does not support pausing.")
                     media.pause(timeout=8)
                 else:
                     media.play(timeout=8)
             elif action in ("next", "previous"):
                 if not state["can_" + action]:
-                    raise ValueError("В этой очереди нет доступного трека.")
+                    raise ValueError("No track is available in this queue.")
                 (media.queue_next if action == "next" else media.queue_prev)(timeout=8)
             elif action == "seek":
                 if not state["can_seek"]:
-                    raise ValueError("Перемотка недоступна для этой трансляции.")
+                    raise ValueError("Seeking is unavailable for this stream.")
                 position = finite(value, -1)
                 if not 0 <= position <= state["duration"]:
-                    raise ValueError("Недопустимая позиция")
+                    raise ValueError("Invalid playback position")
                 was_paused = state["state"] == "PAUSED"
                 media.seek(position, timeout=8)
                 if was_paused:
@@ -307,17 +307,17 @@ class Manager:
                 volume = finite(value, -1000)
                 if action == "volume_delta":
                     if not -10 <= volume <= 10:
-                        raise ValueError("Недопустимое изменение громкости")
+                        raise ValueError("Invalid volume change")
                     volume += finite(device.cast.status.volume_level) * 100
                 elif not 0 <= volume <= 100:
-                    raise ValueError("Недопустимая громкость")
+                    raise ValueError("Invalid volume")
                 device.cast.set_volume(max(0, min(100, volume)) / 100, timeout=8)
             elif action == "mute":
                 device.cast.set_volume_muted(not device.cast.status.volume_muted, timeout=8)
             elif action == "stop":
                 media.stop(timeout=8)
             else:
-                raise ValueError("Неизвестная команда")
+                raise ValueError("Unknown command")
             with self.lock:
                 self.error = ""
 
@@ -336,7 +336,7 @@ class Manager:
                     self.command(key, "pause")
             except Exception:
                 with self.lock:
-                    self.error = "Таймер завершён, но колонки не ответили."
+                    self.error = "The sleep timer ended, but the speakers did not respond."
                 LOG.exception("Sleep timer could not pause the receiver")
 
     def stop(self):
@@ -404,10 +404,11 @@ class Handler(BaseHTTPRequestHandler):
             self.server.manager.command(data.get("device"), data.get("action"), data.get("value"))
             self.reply(200, self.server.manager.snapshot())
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
-            self.reply(400, {"error": str(exc)})
+            message = str(exc) if isinstance(exc, ValueError) and not isinstance(exc, json.JSONDecodeError) else "Invalid request"
+            self.reply(400, {"error": message})
         except Exception:
             LOG.exception("Receiver command failed")
-            self.reply(502, {"error": "Колонки не ответили. Попробуйте ещё раз."})
+            self.reply(502, {"error": "The speakers did not respond. Try again."})
 
 
 def main():

@@ -1,0 +1,176 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: KCromecast 1.0\n"
+"PO-Revision-Date: 2026-10-23 18:45+0300\n"
+"Last-Translator: KCromecast contributors\n"
+"Language-Team: English\n"
+"MIME-Version: 1.0\n"
+"Language: en\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Appearance"
+msgstr "Appearance"
+
+msgid "Surface opacity:"
+msgstr "Surface opacity:"
+
+msgid "Reduce animations"
+msgstr "Reduce animations"
+
+msgid "Colours and fonts follow your Plasma theme. Background blur follows your desktop's transparency settings."
+msgstr "Colours and fonts follow your Plasma theme. Background blur follows your desktop's transparency settings."
+
+msgid "Music on your speakers. Control from here."
+msgstr "Music on your speakers. Control from here."
+
+msgid "The speakers did not respond. Try again."
+msgstr "The speakers did not respond. Try again."
+
+msgid "Refresh"
+msgstr "Refresh"
+
+msgid "More controls"
+msgstr "More controls"
+
+msgid "Choose speakers"
+msgstr "Choose speakers"
+
+msgid "Ready to play"
+msgstr "Ready to play"
+
+msgid "Waiting for speakers"
+msgstr "Waiting for speakers"
+
+msgid "Connecting…"
+msgstr "Connecting…"
+
+msgid "Playing on your speakers"
+msgstr "Playing on your speakers"
+
+msgid "Connecting to your music"
+msgstr "Connecting to your music"
+
+msgid "Start with your phone"
+msgstr "Start with your phone"
+
+msgid "Cast music to these speakers, then control it here."
+msgstr "Cast music to these speakers, then control it here."
+
+msgid "Playback position"
+msgstr "Playback position"
+
+msgid "Previous track"
+msgstr "Previous track"
+
+msgid "Next track"
+msgstr "Next track"
+
+msgid "Pause"
+msgstr "Pause"
+
+msgid "Play"
+msgstr "Play"
+
+msgid "Mute"
+msgstr "Mute"
+
+msgid "Unmute"
+msgstr "Unmute"
+
+msgid "Volume"
+msgstr "Volume"
+
+msgid "Sleep in %1"
+msgstr "Sleep in %1"
+
+msgid "Middle-click: pause · Scroll: volume"
+msgstr "Middle-click: pause · Scroll: volume"
+
+msgid "Back"
+msgstr "Back"
+
+msgid "Your speakers"
+msgstr "Your speakers"
+
+msgid "Choose where to control playback"
+msgstr "Choose where to control playback"
+
+msgid "Offline"
+msgstr "Offline"
+
+msgid "Looking for Chromecast speakers on your network…"
+msgstr "Looking for Chromecast speakers on your network…"
+
+msgid "Speaker groups are managed in Google Home."
+msgstr "Speaker groups are managed in Google Home."
+
+msgid "Sleep timer"
+msgstr "Sleep timer"
+
+msgid "15 minutes"
+msgstr "15 minutes"
+
+msgid "30 minutes"
+msgstr "30 minutes"
+
+msgid "45 minutes"
+msgstr "45 minutes"
+
+msgid "1 hour"
+msgstr "1 hour"
+
+msgid "Cancel timer"
+msgstr "Cancel timer"
+
+msgid "Stop casting"
+msgstr "Stop casting"
+
+msgid "The speakers are unavailable. Check your network connection."
+msgstr "The speakers are unavailable. Check your network connection."
+
+msgid "Invalid sleep timer"
+msgstr "Invalid sleep timer"
+
+msgid "Start music on your phone first."
+msgstr "Start music on your phone first."
+
+msgid "This service does not support pausing."
+msgstr "This service does not support pausing."
+
+msgid "No track is available in this queue."
+msgstr "No track is available in this queue."
+
+msgid "Seeking is unavailable for this stream."
+msgstr "Seeking is unavailable for this stream."
+
+msgid "Invalid playback position"
+msgstr "Invalid playback position"
+
+msgid "Invalid volume change"
+msgstr "Invalid volume change"
+
+msgid "Invalid volume"
+msgstr "Invalid volume"
+
+msgid "Unknown command"
+msgstr "Unknown command"
+
+msgid "The sleep timer ended, but the speakers did not respond."
+msgstr "The sleep timer ended, but the speakers did not respond."
+
+msgid "Unauthorized"
+msgstr "Unauthorized"
+
+msgid "Not found"
+msgstr "Not found"
+
+msgid "Invalid request"
+msgstr "Invalid request"
+
+msgid "Copy"
+msgstr "Copy"
+
+msgid "Select all"
+msgstr "Select all"

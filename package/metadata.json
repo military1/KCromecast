@@ -7,7 +7,7 @@
     "Description[ru]": "Музыка на колонках. Управление в панели.",
     "Category": "Multimedia",
     "Icon": "/icons/kcromecast.svg",
-    "Version": "1.0.0",
+    "Version": "1.0.1",
     "License": "GPL-3.0-or-later",
     "Authors": [{"Name": "KCromecast contributors"}],
     "Copyright": "2026 KCromecast contributors; based on the KCast concept by Alec / Agundur"

@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KCromecast 1.0\n"
-"PO-Revision-Date: 2026-10-23 18:00+0300\n"
+"PO-Revision-Date: 2026-10-23 18:45+0300\n"
 "Last-Translator: KCromecast contributors\n"
 "Language-Team: Russian\n"
 "MIME-Version: 1.0\n"
@@ -164,3 +164,51 @@ msgstr "Отменить таймер"
 
 msgid "Stop casting"
 msgstr "Остановить воспроизведение"
+
+msgid "The speakers are unavailable. Check your network connection."
+msgstr "Колонки недоступны. Проверьте подключение к сети."
+
+msgid "Invalid sleep timer"
+msgstr "Недопустимый таймер"
+
+msgid "Start music on your phone first."
+msgstr "Сначала запустите музыку на телефоне."
+
+msgid "This service does not support pausing."
+msgstr "Сервис не поддерживает паузу."
+
+msgid "No track is available in this queue."
+msgstr "В этой очереди нет доступного трека."
+
+msgid "Seeking is unavailable for this stream."
+msgstr "Перемотка недоступна для этой трансляции."
+
+msgid "Invalid playback position"
+msgstr "Недопустимая позиция"
+
+msgid "Invalid volume change"
+msgstr "Недопустимое изменение громкости"
+
+msgid "Invalid volume"
+msgstr "Недопустимая громкость"
+
+msgid "Unknown command"
+msgstr "Неизвестная команда"
+
+msgid "The sleep timer ended, but the speakers did not respond."
+msgstr "Таймер завершён, но колонки не ответили."
+
+msgid "Unauthorized"
+msgstr "Нет доступа"
+
+msgid "Not found"
+msgstr "Не найдено"
+
+msgid "Invalid request"
+msgstr "Недопустимый запрос"
+
+msgid "Copy"
+msgstr "Копировать"
+
+msgid "Select all"
+msgstr "Выделить всё"

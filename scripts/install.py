@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from urllib.request import Request, ProxyHandler, build_opener
+from translations import compile_translations
 
 ROOT = Path(__file__).resolve().parents[1]
 HOME = Path.home()
@@ -38,10 +39,7 @@ def main():
         run(sys.executable, "-m", "venv", str(DATA / "venv"))
     run(str(python), "-m", "pip", "install", "--upgrade", "-e", str(ROOT))
     run(str(python), "-m", "pip", "freeze", stdout=(DATA / "requirements.lock").open("w"))
-    for po in (ROOT / "translations").glob("*.po"):
-        output = ROOT / "package/contents/locale" / po.stem / "LC_MESSAGES" / ("plasma_applet_" + PLUGIN + ".mo")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        run("msgfmt", "--check", str(po), "-o", str(output))
+    compile_translations(ROOT)
     run("kpackagetool6", "--type", "Plasma/Applet", "--upgrade" if installed.exists() else "--install", str(ROOT / "package"))
 
     config = HOME / ".config/kcromecast/service.json"
@@ -112,7 +110,7 @@ replacement.writeConfig("backendToken", TOKEN);
 if (!replacement.readConfig("preferredDevice", "")) replacement.writeConfig("preferredDevice", DEVICE);
 replacement.currentConfigGroup = [];
 replacement.writeConfig("popupWidth", 352);
-replacement.writeConfig("popupHeight", 372);
+replacement.writeConfig("popupHeight", 392);
 for (var widget of previous) widget.remove();
 print("KCromecast widget " + replacement.id);
 '''.replace("TOKEN", json.dumps(token)).replace("DEVICE", json.dumps(selected))

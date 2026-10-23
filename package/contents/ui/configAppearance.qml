@@ -1,3 +1,4 @@
+import "Locale.js" as L10n
 import QtQuick
 import QtQuick.Controls as QQC
 import QtQuick.Layouts
@@ -10,7 +11,7 @@ KCM.SimpleKCM {
 
     Kirigami.FormLayout {
         QQC.Slider {
-            Kirigami.FormData.label: i18n("Surface opacity:")
+            Kirigami.FormData.label: L10n.tr(Qt.locale(), "Surface opacity:")
             from: 0.4
             to: 1
             stepSize: 0.02
@@ -18,13 +19,13 @@ KCM.SimpleKCM {
             onMoved: cfg_glassOpacity = value
         }
         QQC.CheckBox {
-            text: i18n("Reduce animations")
+            text: L10n.tr(Qt.locale(), "Reduce animations")
             checked: cfg_reduceMotion
             onToggled: cfg_reduceMotion = checked
         }
         QQC.Label {
             Layout.maximumWidth: 360
-            text: i18n("Colours and fonts follow your Plasma theme. Background blur follows your desktop's transparency settings.")
+            text: L10n.tr(Qt.locale(), "Colours and fonts follow your Plasma theme. Background blur follows your desktop's transparency settings.")
             wrapMode: Text.WordWrap
         }
     }

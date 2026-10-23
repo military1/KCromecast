@@ -1,3 +1,4 @@
+import "Locale.js" as L10n
 import QtQuick
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -30,8 +31,8 @@ PlasmoidItem {
     preferredRepresentation: compactRepresentation
     toolTipMainText: root.active ? root.device.title || "KCromecast" : "KCromecast"
     toolTipSubText: root.active ? (root.device.artist || "") + "\n" + (root.device.name || "")
-        + "\n" + i18n("Middle-click: pause · Scroll: volume")
-        : i18n("Music on your speakers. Control from here.")
+        + "\n" + L10n.tr(Qt.locale(), "Middle-click: pause · Scroll: volume")
+        : L10n.tr(Qt.locale(), "Music on your speakers. Control from here.")
 
     function formatTime(value) {
         var seconds = Math.max(0, Math.floor(Number(value) || 0));
@@ -45,7 +46,7 @@ PlasmoidItem {
         root.online = true;
         root.devices = data.devices || [];
         root.sleepTimer = data.sleep || ({ remaining: 0, device: "" });
-        if (data.error) root.errorText = data.error;
+        if (data.error) root.errorText = L10n.tr(Qt.locale(), data.error);
         if (!root.selectedId && root.devices.length) {
             var active = root.devices.find(d => d.group && d.state !== "IDLE")
                 || root.devices.find(d => d.state !== "IDLE") || root.devices[0];
@@ -89,7 +90,7 @@ PlasmoidItem {
         root.request("POST", "command", { device: root.selectedId, action: action, value: value }, function(status, response) {
             root.pendingCommands--;
             if (status !== 200) {
-                root.errorText = response.error || i18n("The speakers did not respond. Try again.");
+                root.errorText = L10n.tr(Qt.locale(), response.error || "The speakers did not respond. Try again.");
                 dismissError.restart();
             }
         });
