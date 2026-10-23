@@ -134,6 +134,13 @@ print("Configured KCromecast widgets: " + replacements.length);
 ''' % (json.dumps(token), json.dumps(selected))
 
 
+def install_icon(data_home):
+    path = data_home / "icons/hicolor/scalable/apps" / (PLUGIN + ".svg")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "package/contents/icons/kcromecast.svg", path)
+    return path
+
+
 def wait_for_service(token, timeout=15):
     opener = build_opener(ProxyHandler({}))
     deadline = time.monotonic() + timeout
@@ -216,6 +223,7 @@ def main(argv=None):
         token = secrets.token_urlsafe(32)
     atomic_config(config, {**existing, "token": token})
     compile_translations(ROOT)
+    install_icon(data_home)
     run("kpackagetool6", "--type", "Plasma/Applet", "--upgrade" if installed.exists() else "--install", str(ROOT / "package"))
     service.parent.mkdir(parents=True, exist_ok=True)
     service.write_text(service_text(python, config))
@@ -230,7 +238,7 @@ Type=Application
 Name=KCromecast
 Comment=Chromecast remote for KDE Plasma
 Comment[ru]=Пульт Chromecast для KDE Plasma
-Icon={installed}/contents/icons/kcromecast.svg
+Icon={PLUGIN}
 Exec={qdbus} org.mpris.MediaPlayer2.kcromecast /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Raise
 NoDisplay=true
 Categories=AudioVideo;Audio;

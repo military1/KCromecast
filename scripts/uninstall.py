@@ -31,6 +31,7 @@ def main():
     shutil.rmtree(data_home / "kcromecast/venv", ignore_errors=True)
     (config_home / "systemd/user/kcromecast.service").unlink(missing_ok=True)
     (data_home / "applications/org.kcromecast.widget.desktop").unlink(missing_ok=True)
+    (data_home / "icons/hicolor/scalable/apps" / (PLUGIN + ".svg")).unlink(missing_ok=True)
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
     if args.purge:
         for path in (data_home / "kcromecast", config_home / "kcromecast", xdg("XDG_CACHE_HOME", ".cache") / "kcromecast"):

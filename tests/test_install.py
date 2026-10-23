@@ -5,10 +5,16 @@ import unittest
 from unittest.mock import patch
 
 from scripts.build import source_files
-from scripts.install import atomic_config, find_qdbus, panel_script, plasma_version, service_text
+from scripts.install import PLUGIN, atomic_config, find_qdbus, install_icon, panel_script, plasma_version, service_text
 
 
 class InstallerTests(unittest.TestCase):
+    def test_icon_is_installed_under_the_metadata_theme_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = install_icon(Path(directory))
+            self.assertEqual(path.name, PLUGIN + ".svg")
+            self.assertIn("<svg", path.read_text())
+
     def test_plasma_version_parser(self):
         self.assertEqual(plasma_version("plasmashell 6.0.0"), (6, 0, 0))
         self.assertEqual(plasma_version("plasmashell 6.8.1"), (6, 8, 1))

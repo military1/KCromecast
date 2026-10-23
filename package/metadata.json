@@ -6,7 +6,7 @@
     "Description": "Chromecast remote for KDE Plasma",
     "Description[ru]": "Пульт Chromecast для KDE Plasma",
     "Category": "Multimedia",
-    "Icon": "/icons/kcromecast.svg",
+    "Icon": "org.kcromecast.widget",
     "Version": "1.1.1",
     "License": "GPL-3.0-or-later",
     "Authors": [
